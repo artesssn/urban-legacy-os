@@ -59,10 +59,20 @@ async function setupAuth() {
 function bindAuth() {
   $("auth-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    clearAuthMessage();
     const email = $("auth-email").value.trim();
     const password = $("auth-password").value;
     const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error) return toast("E-mail ou senha inválidos");
+    if (error) {
+      const needsConfirmation = error.message.toLowerCase().includes("confirm");
+      authMessage(
+        needsConfirmation
+          ? "Esse e-mail ainda precisa ser confirmado. Abra seu Gmail, procure o e-mail do Supabase e confirme o cadastro. Depois volte aqui e clique em Entrar."
+          : `Não consegui entrar: ${error.message}`,
+        "error"
+      );
+      return;
+    }
     currentUser = data.user;
     $("auth-screen").hidden = true;
     await loadCloudState();
@@ -71,14 +81,26 @@ function bindAuth() {
   });
 
   $("auth-signup").addEventListener("click", async () => {
+    clearAuthMessage();
     const email = $("auth-email").value.trim();
     const password = $("auth-password").value;
-    if (!email || password.length < 6) return toast("Informe e-mail e senha com 6+ caracteres");
+    if (!email || password.length < 6) {
+      authMessage("Informe um e-mail válido e uma senha com pelo menos 6 caracteres.", "error");
+      return;
+    }
     const { data, error } = await db.auth.signUp({ email, password });
-    if (error) return toast("Não foi possível criar acesso");
+    if (error) {
+      authMessage(`Não consegui criar o acesso: ${error.message}`, "error");
+      return;
+    }
     currentUser = data.session?.user || null;
     $("auth-screen").hidden = Boolean(currentUser);
-    toast(currentUser ? "Acesso criado" : "Confira seu e-mail e depois entre");
+    authMessage(
+      currentUser
+        ? "Acesso criado. Entrando na sua nuvem..."
+        : "Cadastro criado. Agora confirme o e-mail que o Supabase enviou para você. Depois volte aqui e clique em Entrar.",
+      "info"
+    );
     if (currentUser) {
       await seedCloud();
       await loadCloudState();
@@ -231,6 +253,20 @@ function toast(message) {
   el.textContent = message;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 2100);
+}
+
+function authMessage(message, type = "info") {
+  const el = $("auth-message");
+  if (!el) return;
+  el.textContent = message;
+  el.className = `auth-message show ${type === "error" ? "error" : ""}`;
+}
+
+function clearAuthMessage() {
+  const el = $("auth-message");
+  if (!el) return;
+  el.textContent = "";
+  el.className = "auth-message";
 }
 
 async function init() {
