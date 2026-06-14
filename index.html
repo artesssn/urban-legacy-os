@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Urban Legacy OS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="supabase-config.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="auth-screen" id="auth-screen" hidden>
+      <form class="auth-panel" id="auth-form">
+        <img src="https://images.yampi.me/assets/stores/urban-legacy2/uploads/logo/6a0376c018120.png" alt="Urban Legacy" />
+        <p class="eyebrow">Acesso seguro</p>
+        <h1>Urban Legacy OS</h1>
+        <label>E-mail<input id="auth-email" type="email" required autocomplete="email" /></label>
+        <label>Senha<input id="auth-password" type="password" required minlength="6" autocomplete="current-password" /></label>
+        <button class="primary-button full" type="submit"><i data-lucide="log-in"></i>Entrar</button>
+        <button class="ghost-button full" id="auth-signup" type="button"><i data-lucide="user-plus"></i>Criar acesso</button>
+        <p class="item-sub">Use o e-mail e senha cadastrados no Supabase para acessar seus dados na nuvem.</p>
+      </form>
+    </div>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#dashboard" aria-label="Urban Legacy OS">
+          <img src="https://images.yampi.me/assets/stores/urban-legacy2/uploads/logo/6a0376c018120.png" alt="Urban Legacy" />
+          <span>Urban Legacy</span>
+        </a>
+
+        <nav class="nav" aria-label="Navegação principal">
+          <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Painel</span></button>
+          <button class="nav-item" data-view="products"><i data-lucide="package"></i><span>Estoque</span></button>
+          <button class="nav-item" data-view="pricing"><i data-lucide="calculator"></i><span>Precificação</span></button>
+          <button class="nav-item" data-view="sales"><i data-lucide="shopping-bag"></i><span>Vendas</span></button>
+          <button class="nav-item" data-view="customers"><i data-lucide="users"></i><span>Clientes</span></button>
+          <button class="nav-item" data-view="reports"><i data-lucide="bar-chart-3"></i><span>Relatórios</span></button>
+        </nav>
+
+        <div class="sidebar-card">
+          <p>Operação diária</p>
+          <strong id="sidebar-profit">R$ 0,00</strong>
+          <span id="storage-mode">modo local</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Gestão de moda e acessórios</p>
+            <h1 id="view-title">Painel de controle</h1>
+          </div>
+          <div class="topbar-actions">
+            <div class="search-wrap">
+              <i data-lucide="search"></i>
+              <input id="global-search" type="search" placeholder="Buscar produto, SKU ou cliente" />
+            </div>
+            <button class="icon-button" id="seed-demo" title="Repor dados de exemplo"><i data-lucide="sparkles"></i></button>
+            <button class="icon-button" id="logout-button" title="Sair da nuvem" hidden><i data-lucide="log-out"></i></button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboard">
+          <div class="metrics-grid">
+            <article class="metric">
+              <span>Faturamento</span>
+              <strong id="metric-revenue">R$ 0,00</strong>
+              <small>vendas registradas</small>
+            </article>
+            <article class="metric">
+              <span>Lucro líquido</span>
+              <strong id="metric-profit">R$ 0,00</strong>
+              <small>após custos e taxas</small>
+            </article>
+            <article class="metric">
+              <span>Itens em estoque</span>
+              <strong id="metric-stock">0</strong>
+              <small id="metric-low">0 em alerta</small>
+            </article>
+            <article class="metric">
+              <span>Ticket médio</span>
+              <strong id="metric-ticket">R$ 0,00</strong>
+              <small>por venda</small>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Produtos em atenção</h2>
+                <button class="ghost-button" data-jump="products">Ver estoque</button>
+              </div>
+              <div class="stock-alert-list" id="stock-alert-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Venda rápida</h2>
+                <button class="ghost-button" data-jump="sales">Histórico</button>
+              </div>
+              <form class="compact-form" id="quick-sale-form">
+                <label>Produto<select id="quick-product"></select></label>
+                <label>Quantidade<input id="quick-qty" type="number" min="1" value="1" /></label>
+                <label>Cliente<input id="quick-customer" placeholder="Nome do cliente" /></label>
+                <button class="primary-button" type="submit"><i data-lucide="plus"></i>Registrar venda</button>
+              </form>
+            </section>
+
+            <section class="panel wide">
+              <div class="panel-heading">
+                <h2>Movimento recente</h2>
+                <span class="pill">Urban Legacy OS</span>
+              </div>
+              <div class="timeline" id="timeline"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="products">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-heading"><h2>Cadastrar produto</h2></div>
+              <form id="product-form" class="form-grid">
+                <input type="hidden" id="product-id" />
+                <label>Nome<input id="product-name" required placeholder="Camiseta oversized preta" /></label>
+                <label>Categoria<select id="product-category"></select></label>
+                <label>SKU<input id="product-sku" required placeholder="UL-MASC-001" /></label>
+                <label>Tamanho<input id="product-size" placeholder="P, M, G ou único" /></label>
+                <label>Cor<input id="product-color" placeholder="Preto" /></label>
+                <label>Fornecedor<input id="product-supplier" placeholder="Fornecedor" /></label>
+                <label>Custo do produto<input id="product-cost" type="number" min="0" step="0.01" required /></label>
+                <label>Estoque<input id="product-stock" type="number" min="0" step="1" required /></label>
+                <label>Estoque mínimo<input id="product-min" type="number" min="0" step="1" value="3" /></label>
+                <label>Preço de venda<input id="product-price" type="number" min="0" step="0.01" required /></label>
+                <button class="primary-button full" type="submit"><i data-lucide="save"></i>Salvar produto</button>
+              </form>
+            </section>
+
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h2>Estoque</h2>
+                <span class="pill" id="product-count">0 produtos</span>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Produto</th><th>Categoria</th><th>SKU</th><th>Estoque</th><th>Venda</th><th></th></tr>
+                  </thead>
+                  <tbody id="products-table"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="pricing">
+          <div class="pricing-layout">
+            <section class="panel">
+              <div class="panel-heading"><h2>Calculadora de revenda</h2></div>
+              <form id="pricing-form" class="form-grid">
+                <label>Custo do produto<input id="calc-cost" type="number" min="0" step="0.01" value="59.90" /></label>
+                <label>Frete de compra<input id="calc-freight" type="number" min="0" step="0.01" value="8" /></label>
+                <label>Embalagem<input id="calc-packaging" type="number" min="0" step="0.01" value="2.5" /></label>
+                <label>Custo fixo proporcional<input id="calc-fixed" type="number" min="0" step="0.01" value="3" /></label>
+                <label>Taxa plataforma/cartão (%)<input id="calc-fee" type="number" min="0" max="90" step="0.01" value="8" /></label>
+                <label>Margem desejada (%)<input id="calc-margin" type="number" min="0" max="90" step="0.01" value="45" /></label>
+                <label>Desconto planejado (%)<input id="calc-discount" type="number" min="0" max="90" step="0.01" value="0" /></label>
+                <label>Comissão (%)<input id="calc-commission" type="number" min="0" max="90" step="0.01" value="0" /></label>
+              </form>
+            </section>
+            <section class="panel result-panel">
+              <p class="eyebrow">Preço sugerido</p>
+              <strong id="suggested-price">R$ 0,00</strong>
+              <div class="result-list">
+                <span>Custo real <b id="real-cost">R$ 0,00</b></span>
+                <span>Preço mínimo <b id="break-even">R$ 0,00</b></span>
+                <span>Lucro por venda <b id="profit-per-sale">R$ 0,00</b></span>
+                <span>Margem real <b id="real-margin">0%</b></span>
+              </div>
+              <button class="primary-button" id="copy-price" type="button"><i data-lucide="copy"></i>Copiar preço</button>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="sales">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-heading"><h2>Nova venda</h2></div>
+              <form id="sale-form" class="form-grid">
+                <label>Produto<select id="sale-product"></select></label>
+                <label>Quantidade<input id="sale-qty" type="number" min="1" value="1" /></label>
+                <label>Preço final<input id="sale-price" type="number" min="0" step="0.01" /></label>
+                <label>Cliente<input id="sale-customer" placeholder="Cliente" /></label>
+                <label>Canal<select id="sale-channel"><option>Yampi</option><option>WhatsApp</option><option>Instagram</option><option>Loja física</option></select></label>
+                <label>Status<select id="sale-status"><option>Pago</option><option>Pendente</option><option>Enviado</option><option>Entregue</option></select></label>
+                <button class="primary-button full" type="submit"><i data-lucide="shopping-cart"></i>Registrar</button>
+              </form>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading"><h2>Histórico de vendas</h2></div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Total</th><th>Lucro</th></tr></thead>
+                  <tbody id="sales-table"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="customers">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-heading"><h2>Cadastrar cliente</h2></div>
+              <form id="customer-form" class="form-grid">
+                <label>Nome<input id="customer-name" required /></label>
+                <label>WhatsApp<input id="customer-phone" placeholder="(00) 00000-0000" /></label>
+                <label>Instagram<input id="customer-instagram" placeholder="@cliente" /></label>
+                <label>Preferência<select id="customer-style"><option>Moda Feminina</option><option>Moda Masculina</option><option>Acessórios</option><option>Streetwear</option></select></label>
+                <label class="full">Observações<textarea id="customer-notes" rows="4" placeholder="Tamanho, gosto, datas importantes"></textarea></label>
+                <button class="primary-button full" type="submit"><i data-lucide="user-plus"></i>Salvar cliente</button>
+              </form>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading"><h2>Base de clientes</h2></div>
+              <div class="customer-list" id="customer-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="reports">
+          <div class="report-grid">
+            <section class="panel">
+              <div class="panel-heading"><h2>Resumo financeiro</h2></div>
+              <div class="report-bars" id="report-bars"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading"><h2>Categorias</h2></div>
+              <div class="category-report" id="category-report"></div>
+            </section>
+            <section class="panel wide">
+              <div class="panel-heading"><h2>Ações recomendadas</h2></div>
+              <div class="recommendations" id="recommendations"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </body>
+</html>
