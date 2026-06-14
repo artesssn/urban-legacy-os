@@ -88,7 +88,13 @@ function bindAuth() {
       authMessage("Informe um e-mail válido e uma senha com pelo menos 6 caracteres.", "error");
       return;
     }
-    const { data, error } = await db.auth.signUp({ email, password });
+    const { data, error } = await db.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: "https://artesssn.github.io/urban-legacy-os/"
+      }
+    });
     if (error) {
       authMessage(`Não consegui criar o acesso: ${error.message}`, "error");
       return;
