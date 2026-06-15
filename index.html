@@ -126,7 +126,10 @@
         <section class="view" id="products">
           <div class="split-layout">
             <section class="panel">
-              <div class="panel-heading"><h2>Cadastrar produto</h2></div>
+              <div class="panel-heading">
+                <h2 id="product-form-title">Cadastrar produto</h2>
+                <button class="ghost-button small-action" id="cancel-product-edit" type="button" hidden>Cancelar edição</button>
+              </div>
               <form id="product-form" class="form-grid">
                 <input type="hidden" id="product-id" />
                 <label>Nome<input id="product-name" required placeholder="Camiseta oversized preta" /></label>
@@ -151,7 +154,7 @@
               <div class="table-scroll">
                 <table>
                   <thead>
-                    <tr><th>Produto</th><th>Categoria</th><th>SKU</th><th>Estoque</th><th>Venda</th><th></th></tr>
+                    <tr><th>Produto</th><th>Categoria</th><th>SKU</th><th>Estoque</th><th>Preço</th><th>Ações</th></tr>
                   </thead>
                   <tbody id="products-table"></tbody>
                 </table>
