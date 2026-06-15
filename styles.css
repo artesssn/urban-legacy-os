@@ -383,7 +383,7 @@ label {
 
 table {
   width: 100%;
-  min-width: 700px;
+  min-width: 860px;
   border-collapse: collapse;
 }
 
@@ -403,6 +403,7 @@ th {
 .row-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -413,6 +414,23 @@ th {
   background: #111014;
   color: var(--text);
   border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.mini-button.danger {
+  color: #ffd1d1;
+  border-color: rgba(255, 122, 122, 0.44);
+}
+
+.small-action {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .status-low {
