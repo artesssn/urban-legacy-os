@@ -338,6 +338,7 @@ function showView(view) {
 
 function bindForms() {
   $("product-form").addEventListener("submit", saveProduct);
+  $("cancel-product-edit").addEventListener("click", resetProductForm);
   $("sale-form").addEventListener("submit", (event) => saveSale(event, "sale"));
   $("quick-sale-form").addEventListener("submit", (event) => saveSale(event, "quick"));
   $("customer-form").addEventListener("submit", saveCustomer);
@@ -404,8 +405,8 @@ function renderProducts() {
       <td>${money.format(product.price)}</td>
       <td>
         <div class="row-actions">
-          <button class="mini-button" title="Editar" onclick="editProduct('${product.id}')"><i data-lucide="pencil"></i></button>
-          <button class="mini-button" title="Excluir" onclick="deleteProduct('${product.id}')"><i data-lucide="trash-2"></i></button>
+          <button class="mini-button" title="Editar preço e estoque" onclick="editProduct('${product.id}')"><i data-lucide="pencil"></i>Editar preço/estoque</button>
+          <button class="mini-button danger" title="Remover do estoque" onclick="deleteProduct('${product.id}')"><i data-lucide="trash-2"></i>Remover</button>
         </div>
       </td>
     </tr>
@@ -439,10 +440,17 @@ async function saveProduct(event) {
   }
 
   event.target.reset();
-  $("product-id").value = "";
-  $("product-min").value = 3;
+  resetProductForm();
   render();
   toast("Produto salvo");
+}
+
+function resetProductForm() {
+  $("product-form").reset();
+  $("product-id").value = "";
+  $("product-min").value = 3;
+  $("product-form-title").textContent = "Cadastrar produto";
+  $("cancel-product-edit").hidden = true;
 }
 
 function editProduct(id) {
@@ -459,10 +467,17 @@ function editProduct(id) {
   $("product-stock").value = product.stock;
   $("product-min").value = product.min;
   $("product-price").value = product.price;
+  $("product-form-title").textContent = "Editar produto";
+  $("cancel-product-edit").hidden = false;
   showView("products");
+  $("product-price").focus();
 }
 
 async function deleteProduct(id) {
+  const product = state.products.find((item) => item.id === id);
+  if (!product) return;
+  const ok = window.confirm(`Remover "${product.name}" do estoque? Essa ação apaga o produto cadastrado.`);
+  if (!ok) return;
   state.products = state.products.filter((product) => product.id !== id);
   if (cloudEnabled) {
     const { error } = await db.from("products").delete().eq("id", id);
