@@ -620,6 +620,8 @@ function calculatePrice() {
   const discountedSalePrice = suggested * (1 - discount);
   const discountProfit = discountedSalePrice * (1 - fee - commission) - realCost;
   $("suggested-price").textContent = money.format(suggested);
+  $("daily-price").textContent = money.format(suggested);
+  $("profit-summary").textContent = `Lucro estimado de ${money.format(profit)} por venda`;
   $("real-cost").textContent = money.format(realCost);
   $("break-even").textContent = money.format(breakEven);
   $("profit-per-sale").textContent = money.format(profit);
@@ -627,6 +629,8 @@ function calculatePrice() {
   $("max-healthy-discount").textContent = `${(maxHealthyDiscount * 100).toFixed(1)}%`;
   $("discount-profit").textContent = money.format(discountProfit);
   $("real-margin").textContent = `${((profit / suggested) * 100 || 0).toFixed(1)}%`;
+  $("daily-note").textContent = `Mantém a margem de ${((profit / suggested) * 100 || 0).toFixed(1)}%.`;
+  $("promo-note").textContent = `Ainda sobra cerca de ${money.format(halfProfit)} de lucro.`;
 }
 
 function renderReports() {
