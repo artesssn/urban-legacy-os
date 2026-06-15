@@ -12,7 +12,8 @@ const starterData = {
   sales: [],
   customers: [
     { id: crypto.randomUUID(), name: "Cliente exemplo", phone: "(11) 99999-9999", instagram: "@urbanlover", style: "Streetwear", notes: "Gosta de preto, oversized e acessórios." }
-  ]
+  ],
+  references: []
 };
 
 let state = loadState();
@@ -124,12 +125,14 @@ function bindAuth() {
 
 async function loadCloudState() {
   if (!cloudEnabled || !currentUser) return;
-  const [productsResult, salesResult, customersResult] = await Promise.all([
+  const [productsResult, salesResult, customersResult, referencesResult] = await Promise.all([
     db.from("products").select("*").order("created_at", { ascending: true }),
     db.from("sales").select("*").order("sold_at", { ascending: false }),
-    db.from("customers").select("*").order("created_at", { ascending: false })
+    db.from("customers").select("*").order("created_at", { ascending: false }),
+    db.from("customer_references").select("*").order("created_at", { ascending: false })
   ]);
 
+  const referencesMissing = Boolean(referencesResult.error?.message?.includes("customer_references"));
   const error = productsResult.error || salesResult.error || customersResult.error;
   if (error) {
     cloudEnabled = false;
@@ -142,7 +145,8 @@ async function loadCloudState() {
   state = {
     products: productsResult.data.map(fromProductRow),
     sales: salesResult.data.map(fromSaleRow),
-    customers: customersResult.data.map(fromCustomerRow)
+    customers: customersResult.data.map(fromCustomerRow),
+    references: referencesMissing ? [] : referencesResult.data.map(fromReferenceRow)
   };
 
   if (!state.products.length && !state.sales.length && !state.customers.length) {
@@ -157,6 +161,13 @@ async function seedCloud() {
   const customers = starterData.customers.map(toCustomerRow);
   await db.from("products").insert(products);
   await db.from("customers").insert(customers);
+}
+
+function ensureStateShape() {
+  state.products ||= [];
+  state.sales ||= [];
+  state.customers ||= [];
+  state.references ||= [];
 }
 
 function fromProductRow(row) {
@@ -234,6 +245,42 @@ function fromCustomerRow(row) {
   };
 }
 
+function fromReferenceRow(row) {
+  return {
+    id: row.id,
+    customerId: row.customer_id,
+    customerName: row.customer_name,
+    type: row.type,
+    topSize: row.top_size || "",
+    bottomSize: row.bottom_size || "",
+    shoeSize: row.shoe_size || "",
+    colors: row.colors || "",
+    style: row.style || "",
+    budget: Number(row.budget || 0),
+    link: row.link || "",
+    notes: row.notes || "",
+    date: row.created_at
+  };
+}
+
+function toReferenceRow(reference) {
+  return {
+    id: reference.id,
+    user_id: currentUser?.id,
+    customer_id: reference.customerId || null,
+    customer_name: reference.customerName,
+    type: reference.type,
+    top_size: reference.topSize,
+    bottom_size: reference.bottomSize,
+    shoe_size: reference.shoeSize,
+    colors: reference.colors,
+    style: reference.style,
+    budget: reference.budget,
+    link: reference.link,
+    notes: reference.notes
+  };
+}
+
 function toCustomerRow(customer) {
   return {
     id: customer.id,
@@ -276,6 +323,7 @@ function clearAuthMessage() {
 }
 
 async function init() {
+  ensureStateShape();
   setupCloud();
   if (cloudEnabled) bindAuth();
   const canLoad = await setupAuth();
@@ -309,7 +357,8 @@ function bindNavigation() {
       await Promise.all([
         db.from("sales").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
         db.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("customers").delete().neq("id", "00000000-0000-0000-0000-000000000000")
+        db.from("customers").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+        db.from("customer_references").delete().neq("id", "00000000-0000-0000-0000-000000000000")
       ]);
       await seedCloud();
       await loadCloudState();
@@ -330,6 +379,7 @@ function showView(view) {
     pricing: "Precificação de revenda",
     sales: "Gestão de vendas",
     customers: "Clientes e relacionamento",
+    references: "Referências dos clientes",
     reports: "Relatórios da operação"
   };
   $("view-title").textContent = titles[view];
@@ -342,6 +392,7 @@ function bindForms() {
   $("sale-form").addEventListener("submit", (event) => saveSale(event, "sale"));
   $("quick-sale-form").addEventListener("submit", (event) => saveSale(event, "quick"));
   $("customer-form").addEventListener("submit", saveCustomer);
+  $("reference-form").addEventListener("submit", saveReference);
   $("pricing-form").addEventListener("input", calculatePrice);
   $("copy-price").addEventListener("click", () => {
     navigator.clipboard?.writeText($("suggested-price").textContent);
@@ -356,6 +407,7 @@ function render() {
   renderProducts();
   renderSales();
   renderCustomers();
+  renderReferences();
   renderDashboard();
   renderReports();
   if (window.lucide) lucide.createIcons();
@@ -367,7 +419,15 @@ function renderSelectors() {
     .join("");
   $("quick-product").innerHTML = options || "<option>Nenhum produto cadastrado</option>";
   $("sale-product").innerHTML = options || "<option>Nenhum produto cadastrado</option>";
+  renderCustomerReferenceOptions();
   syncSalePrice();
+}
+
+function renderCustomerReferenceOptions() {
+  const options = state.customers
+    .map((customer) => `<option value="${customer.id}">${customer.name}</option>`)
+    .join("");
+  $("reference-customer").innerHTML = options || "<option value=\"\">Cliente avulso</option>";
 }
 
 function totals() {
@@ -584,6 +644,71 @@ function renderCustomers() {
       <span class="pill">${customer.style}</span>
     </article>
   `).join("") || `<p class="item-sub">Nenhum cliente cadastrado.</p>`;
+}
+
+async function saveReference(event) {
+  event.preventDefault();
+  const customer = state.customers.find((item) => item.id === $("reference-customer").value);
+  const reference = {
+    id: crypto.randomUUID(),
+    customerId: customer?.id || null,
+    customerName: customer?.name || "Cliente avulso",
+    type: $("reference-type").value,
+    topSize: $("reference-top-size").value.trim(),
+    bottomSize: $("reference-bottom-size").value.trim(),
+    shoeSize: $("reference-shoe-size").value.trim(),
+    colors: $("reference-colors").value.trim(),
+    style: $("reference-style").value.trim(),
+    budget: num("reference-budget"),
+    link: $("reference-link").value.trim(),
+    notes: $("reference-notes").value.trim(),
+    date: new Date().toISOString()
+  };
+
+  state.references.unshift(reference);
+
+  if (cloudEnabled) {
+    const { error } = await db.from("customer_references").insert(toReferenceRow(reference));
+    if (error) {
+      state.references = state.references.filter((item) => item.id !== reference.id);
+      return toast("Crie a tabela de referências no Supabase");
+    }
+  } else {
+    saveState();
+  }
+
+  event.target.reset();
+  render();
+  toast("Referência salva");
+}
+
+function renderReferences() {
+  $("reference-count").textContent = `${state.references.length} referências`;
+  $("reference-list").innerHTML = state.references.map((reference) => {
+    const tags = [
+      reference.topSize && `Superior ${reference.topSize}`,
+      reference.bottomSize && `Inferior ${reference.bottomSize}`,
+      reference.shoeSize && `Calçado ${reference.shoeSize}`,
+      reference.colors && `Cores ${reference.colors}`,
+      reference.style && reference.style,
+      reference.budget ? `Até ${money.format(reference.budget)}` : ""
+    ].filter(Boolean);
+
+    return `
+      <article class="reference-item">
+        <div class="reference-meta">
+          <div>
+            <p class="item-title">${reference.customerName}</p>
+            <p class="item-sub">${reference.type} • ${dateFmt.format(new Date(reference.date))}</p>
+          </div>
+          <span class="pill">${reference.type}</span>
+        </div>
+        ${tags.length ? `<div class="reference-tags">${tags.map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
+        ${reference.notes ? `<p class="item-sub">${reference.notes}</p>` : ""}
+        ${reference.link ? `<a class="reference-link" href="${reference.link}" target="_blank" rel="noreferrer">Abrir referência</a>` : ""}
+      </article>
+    `;
+  }).join("") || `<p class="item-sub">Nenhuma referência salva ainda.</p>`;
 }
 
 function renderDashboard() {
