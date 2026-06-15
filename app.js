@@ -614,10 +614,18 @@ function calculatePrice() {
   const suggested = realCost / divisor;
   const breakEven = realCost / Math.max(0.05, 1 - fee - discount - commission);
   const profit = suggested * (1 - fee - discount - commission) - realCost;
+  const halfProfit = Math.max(0, profit / 2);
+  const promoMin = (realCost + halfProfit) / Math.max(0.05, 1 - fee - commission);
+  const maxHealthyDiscount = suggested > 0 ? Math.max(0, Math.min(0.9, 1 - promoMin / suggested)) : 0;
+  const discountedSalePrice = suggested * (1 - discount);
+  const discountProfit = discountedSalePrice * (1 - fee - commission) - realCost;
   $("suggested-price").textContent = money.format(suggested);
   $("real-cost").textContent = money.format(realCost);
   $("break-even").textContent = money.format(breakEven);
   $("profit-per-sale").textContent = money.format(profit);
+  $("promo-min-price").textContent = money.format(promoMin);
+  $("max-healthy-discount").textContent = `${(maxHealthyDiscount * 100).toFixed(1)}%`;
+  $("discount-profit").textContent = money.format(discountProfit);
   $("real-margin").textContent = `${((profit / suggested) * 100 || 0).toFixed(1)}%`;
 }
 
