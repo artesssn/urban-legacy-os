@@ -446,6 +446,7 @@ th {
 .stock-alert-list,
 .timeline,
 .customer-list,
+.reference-list,
 .recommendations,
 .category-report,
 .report-bars {
@@ -456,6 +457,7 @@ th {
 .alert-item,
 .timeline-item,
 .customer-item,
+.reference-item,
 .recommendation,
 .bar-row {
   padding: 14px;
@@ -472,6 +474,40 @@ th {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.reference-item {
+  display: grid;
+  gap: 10px;
+}
+
+.reference-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reference-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.reference-tags span {
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reference-link {
+  color: var(--gold-2);
+  text-decoration: none;
+  font-weight: 800;
 }
 
 .item-title {
