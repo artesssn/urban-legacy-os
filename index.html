@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=product-actions-1" />
+    <link rel="stylesheet" href="styles.css?v=pricing-view-1" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="supabase-config.js?v=1" defer></script>
-    <script src="app.js?v=promo-guidance-1" defer></script>
+    <script src="app.js?v=pricing-view-1" defer></script>
   </head>
   <body>
     <div class="auth-screen" id="auth-screen" hidden>
@@ -179,14 +179,39 @@
               </form>
             </section>
             <section class="panel result-panel">
-              <p class="eyebrow">Preço sugerido</p>
-              <strong id="suggested-price">R$ 0,00</strong>
-              <div class="result-list">
+              <div class="price-hero">
+                <p class="eyebrow">Preço normal recomendado</p>
+                <strong id="suggested-price">R$ 0,00</strong>
+                <span id="profit-summary">Lucro estimado de R$ 0,00</span>
+              </div>
+
+              <div class="pricing-cards">
+                <article class="pricing-card recommended">
+                  <span>Vender no dia a dia</span>
+                  <strong id="daily-price">R$ 0,00</strong>
+                  <p id="daily-note">Melhor preço para manter sua margem.</p>
+                </article>
+                <article class="pricing-card promo">
+                  <span>Promoção segura</span>
+                  <strong id="promo-min-price">R$ 0,00</strong>
+                  <p id="promo-note">Ganha pelo menos metade do lucro ideal.</p>
+                </article>
+                <article class="pricing-card limit">
+                  <span>Limite para não perder</span>
+                  <strong id="break-even">R$ 0,00</strong>
+                  <p>Use só para queima de estoque.</p>
+                </article>
+              </div>
+
+              <div class="discount-panel">
+                <span>Desconto máximo saudável</span>
+                <strong id="max-healthy-discount">0%</strong>
+                <p>Acima disso, sua promoção começa a ficar fraca para lucro.</p>
+              </div>
+
+              <div class="result-list compact">
                 <span>Custo real <b id="real-cost">R$ 0,00</b></span>
-                <span>Preço mínimo <b id="break-even">R$ 0,00</b></span>
-                <span>Lucro por venda <b id="profit-per-sale">R$ 0,00</b></span>
-                <span>Mínimo promocional <b id="promo-min-price">R$ 0,00</b></span>
-                <span>Desconto máximo saudável <b id="max-healthy-discount">0%</b></span>
+                <span>Lucro no preço normal <b id="profit-per-sale">R$ 0,00</b></span>
                 <span>Lucro com desconto planejado <b id="discount-profit">R$ 0,00</b></span>
                 <span>Margem real <b id="real-margin">0%</b></span>
               </div>
