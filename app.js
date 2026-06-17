@@ -1,793 +1,881 @@
-const categories = ["Moda Feminina", "Moda Masculina", "Acessório Feminino", "Acessório Masculino"];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const dateFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const whatsappNumber = "5534988345037";
+const bannerImage = "https://images.yampi.me/assets/stores/urban-legacy2/uploads/banners/6a08cfbb34fe1.png";
 
-const starterData = {
-  products: [
-    { id: crypto.randomUUID(), name: "Cropped canelado premium", category: "Moda Feminina", sku: "UL-FEM-001", size: "P/M/G", color: "Preto", supplier: "Atacado SP", cost: 42.9, stock: 7, min: 3, price: 99.9 },
-    { id: crypto.randomUUID(), name: "Camiseta oversized legacy", category: "Moda Masculina", sku: "UL-MASC-014", size: "M/G/GG", color: "Off white", supplier: "Street Fornece", cost: 55, stock: 4, min: 4, price: 129.9 },
-    { id: crypto.randomUUID(), name: "Óculos urban frame", category: "Acessório Feminino", sku: "UL-ACC-F-009", size: "Único", color: "Marrom", supplier: "Importados BR", cost: 28.5, stock: 2, min: 5, price: 79.9 },
-    { id: crypto.randomUUID(), name: "Boné aba curva signature", category: "Acessório Masculino", sku: "UL-ACC-M-004", size: "Único", color: "Preto", supplier: "Caps Prime", cost: 31.2, stock: 10, min: 3, price: 89.9 }
-  ],
-  sales: [],
-  customers: [
-    { id: crypto.randomUUID(), name: "Cliente exemplo", phone: "(11) 99999-9999", instagram: "@urbanlover", style: "Streetwear", notes: "Gosta de preto, oversized e acessórios." }
-  ],
-  references: []
-};
+const fallbackProducts = [
+  {
+    id: "cropped-canelado-premium",
+    name: "Cropped canelado premium",
+    category: "Moda Feminina",
+    color: "Preto",
+    sizes: ["P", "M", "G"],
+    price: 99.9,
+    badge: "Novo",
+    image: bannerImage
+  },
+  {
+    id: "vestido-noite-legacy",
+    name: "Vestido noite Legacy",
+    category: "Moda Feminina",
+    color: "Preto",
+    sizes: ["P", "M", "G"],
+    price: 149.9,
+    badge: "Destaque",
+    image: bannerImage
+  },
+  {
+    id: "camiseta-oversized-legacy",
+    name: "Camiseta oversized Legacy",
+    category: "Moda Masculina",
+    color: "Off white",
+    sizes: ["M", "G", "GG"],
+    price: 129.9,
+    badge: "Mais vendido",
+    image: bannerImage
+  },
+  {
+    id: "camisa-black-presence",
+    name: "Camisa Black Presence",
+    category: "Moda Masculina",
+    color: "Preto",
+    sizes: ["M", "G", "GG"],
+    price: 159.9,
+    badge: "Premium",
+    image: bannerImage
+  },
+  {
+    id: "oculos-urban-frame",
+    name: "Óculos Urban Frame",
+    category: "Acessório Feminino",
+    color: "Marrom",
+    sizes: ["Único"],
+    price: 79.9,
+    badge: "Presente",
+    image: bannerImage
+  },
+  {
+    id: "bolsa-evening-line",
+    name: "Bolsa Evening Line",
+    category: "Acessório Feminino",
+    color: "Preto",
+    sizes: ["Único"],
+    price: 119.9,
+    badge: "Chic",
+    image: bannerImage
+  },
+  {
+    id: "bone-aba-curva-signature",
+    name: "Boné aba curva Signature",
+    category: "Acessório Masculino",
+    color: "Preto",
+    sizes: ["Único"],
+    price: 89.9,
+    badge: "Street",
+    image: bannerImage
+  },
+  {
+    id: "cinto-metal-legacy",
+    name: "Cinto Metal Legacy",
+    category: "Acessório Masculino",
+    color: "Preto",
+    sizes: ["Único"],
+    price: 69.9,
+    badge: "Essencial",
+    image: bannerImage
+  }
+];
 
-let state = loadState();
+let products = [...fallbackProducts];
+let currentCategory = "Todos";
+let currentPage = "home";
+let currentProductId = null;
+let currentSearchTerm = "";
+let cart = loadCart();
 let db = null;
 let cloudEnabled = false;
-let currentUser = null;
-
-function loadState() {
-  const saved = localStorage.getItem("urbanLegacyOS");
-  if (saved) return JSON.parse(saved);
-  localStorage.setItem("urbanLegacyOS", JSON.stringify(starterData));
-  return structuredClone(starterData);
-}
-
-function saveState() {
-  localStorage.setItem("urbanLegacyOS", JSON.stringify(state));
-}
-
-function getSupabaseConfig() {
-  const config = window.URBAN_LEGACY_SUPABASE || {};
-  return {
-    url: (config.url || "").trim(),
-    anonKey: (config.anonKey || "").trim()
-  };
-}
-
-function setupCloud() {
-  const config = getSupabaseConfig();
-  cloudEnabled = Boolean(config.url && config.anonKey && window.supabase);
-  if (cloudEnabled) db = window.supabase.createClient(config.url, config.anonKey);
-  $("storage-mode").textContent = cloudEnabled ? "nuvem Supabase" : "modo local";
-  $("logout-button").hidden = !cloudEnabled;
-}
-
-async function setupAuth() {
-  if (!cloudEnabled) return true;
-
-  const { data } = await db.auth.getSession();
-  currentUser = data.session?.user || null;
-  $("auth-screen").hidden = Boolean(currentUser);
-  return Boolean(currentUser);
-}
-
-function bindAuth() {
-  $("auth-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    clearAuthMessage();
-    const email = $("auth-email").value.trim();
-    const password = $("auth-password").value;
-    const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error) {
-      const needsConfirmation = error.message.toLowerCase().includes("confirm");
-      authMessage(
-        needsConfirmation
-          ? "Esse e-mail ainda precisa ser confirmado. Abra seu Gmail, procure o e-mail do Supabase e confirme o cadastro. Depois volte aqui e clique em Entrar."
-          : `Não consegui entrar: ${error.message}`,
-        "error"
-      );
-      return;
-    }
-    currentUser = data.user;
-    $("auth-screen").hidden = true;
-    await loadCloudState();
-    render();
-    toast("Conectado à nuvem");
-  });
-
-  $("auth-signup").addEventListener("click", async () => {
-    clearAuthMessage();
-    const email = $("auth-email").value.trim();
-    const password = $("auth-password").value;
-    if (!email || password.length < 6) {
-      authMessage("Informe um e-mail válido e uma senha com pelo menos 6 caracteres.", "error");
-      return;
-    }
-    const { data, error } = await db.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: "https://artesssn.github.io/urban-legacy-os/"
-      }
-    });
-    if (error) {
-      authMessage(`Não consegui criar o acesso: ${error.message}`, "error");
-      return;
-    }
-    currentUser = data.session?.user || null;
-    $("auth-screen").hidden = Boolean(currentUser);
-    authMessage(
-      currentUser
-        ? "Acesso criado. Entrando na sua nuvem..."
-        : "Cadastro criado. Agora confirme o e-mail que o Supabase enviou para você. Depois volte aqui e clique em Entrar.",
-      "info"
-    );
-    if (currentUser) {
-      await seedCloud();
-      await loadCloudState();
-      render();
-    }
-  });
-
-  $("logout-button").addEventListener("click", async () => {
-    await db.auth.signOut();
-    currentUser = null;
-    $("auth-screen").hidden = false;
-    toast("Você saiu da nuvem");
-  });
-}
-
-async function loadCloudState() {
-  if (!cloudEnabled || !currentUser) return;
-  const [productsResult, salesResult, customersResult, referencesResult] = await Promise.all([
-    db.from("products").select("*").order("created_at", { ascending: true }),
-    db.from("sales").select("*").order("sold_at", { ascending: false }),
-    db.from("customers").select("*").order("created_at", { ascending: false }),
-    db.from("customer_references").select("*").order("created_at", { ascending: false })
-  ]);
-
-  const referencesMissing = Boolean(referencesResult.error?.message?.includes("customer_references"));
-  const error = productsResult.error || salesResult.error || customersResult.error;
-  if (error) {
-    cloudEnabled = false;
-    db = null;
-    $("storage-mode").textContent = "modo local";
-    toast("Supabase sem conexão. Usando modo local.");
-    return;
-  }
-
-  state = {
-    products: productsResult.data.map(fromProductRow),
-    sales: salesResult.data.map(fromSaleRow),
-    customers: customersResult.data.map(fromCustomerRow),
-    references: referencesMissing ? [] : referencesResult.data.map(fromReferenceRow)
-  };
-
-  if (!state.products.length && !state.sales.length && !state.customers.length) {
-    await seedCloud();
-    await loadCloudState();
-  }
-}
-
-async function seedCloud() {
-  if (!cloudEnabled || !currentUser) return;
-  const products = starterData.products.map(toProductRow);
-  const customers = starterData.customers.map(toCustomerRow);
-  await db.from("products").insert(products);
-  await db.from("customers").insert(customers);
-}
-
-function ensureStateShape() {
-  state.products ||= [];
-  state.sales ||= [];
-  state.customers ||= [];
-  state.references ||= [];
-}
-
-function fromProductRow(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    category: row.category,
-    sku: row.sku,
-    size: row.size || "",
-    color: row.color || "",
-    supplier: row.supplier || "",
-    cost: Number(row.cost || 0),
-    stock: Number(row.stock || 0),
-    min: Number(row.min_stock || 0),
-    price: Number(row.price || 0)
-  };
-}
-
-function toProductRow(product) {
-  return {
-    id: product.id,
-    user_id: currentUser?.id,
-    name: product.name,
-    category: product.category,
-    sku: product.sku,
-    size: product.size,
-    color: product.color,
-    supplier: product.supplier,
-    cost: product.cost,
-    stock: product.stock,
-    min_stock: product.min,
-    price: product.price
-  };
-}
-
-function fromSaleRow(row) {
-  return {
-    id: row.id,
-    date: row.sold_at,
-    productId: row.product_id,
-    productName: row.product_name,
-    qty: Number(row.qty || 0),
-    customer: row.customer,
-    channel: row.channel,
-    status: row.status,
-    total: Number(row.total || 0),
-    profit: Number(row.profit || 0)
-  };
-}
-
-function toSaleRow(sale) {
-  return {
-    id: sale.id,
-    user_id: currentUser?.id,
-    product_id: sale.productId,
-    product_name: sale.productName,
-    qty: sale.qty,
-    customer: sale.customer,
-    channel: sale.channel,
-    status: sale.status,
-    total: sale.total,
-    profit: sale.profit,
-    sold_at: sale.date
-  };
-}
-
-function fromCustomerRow(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    phone: row.phone || "",
-    instagram: row.instagram || "",
-    style: row.style || "",
-    notes: row.notes || ""
-  };
-}
-
-function fromReferenceRow(row) {
-  return {
-    id: row.id,
-    customerId: row.customer_id,
-    customerName: row.customer_name,
-    type: row.type,
-    topSize: row.top_size || "",
-    bottomSize: row.bottom_size || "",
-    shoeSize: row.shoe_size || "",
-    colors: row.colors || "",
-    style: row.style || "",
-    budget: Number(row.budget || 0),
-    link: row.link || "",
-    notes: row.notes || "",
-    date: row.created_at
-  };
-}
-
-function toReferenceRow(reference) {
-  return {
-    id: reference.id,
-    user_id: currentUser?.id,
-    customer_id: reference.customerId || null,
-    customer_name: reference.customerName,
-    type: reference.type,
-    top_size: reference.topSize,
-    bottom_size: reference.bottomSize,
-    shoe_size: reference.shoeSize,
-    colors: reference.colors,
-    style: reference.style,
-    budget: reference.budget,
-    link: reference.link,
-    notes: reference.notes
-  };
-}
-
-function toCustomerRow(customer) {
-  return {
-    id: customer.id,
-    user_id: currentUser?.id,
-    name: customer.name,
-    phone: customer.phone,
-    instagram: customer.instagram,
-    style: customer.style,
-    notes: customer.notes
-  };
-}
+let currentCustomer = null;
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function num(id) {
-  return Number($(id).value || 0);
+function canUseSupabase() {
+  const config = window.URBAN_LEGACY_SUPABASE;
+  return Boolean(window.supabase && config?.url && config?.anonKey);
+}
+
+async function setupCloud() {
+  if (!canUseSupabase()) return;
+  db = window.supabase.createClient(window.URBAN_LEGACY_SUPABASE.url, window.URBAN_LEGACY_SUPABASE.anonKey);
+  cloudEnabled = true;
+}
+
+function productFromRow(row) {
+  const image = row.image_url || bannerImage;
+  const gallery = Array.isArray(row.gallery_urls) && row.gallery_urls.length ? row.gallery_urls : [image];
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    color: row.color || "Urban",
+    sizes: Array.isArray(row.sizes) && row.sizes.length ? row.sizes : ["Único"],
+    price: Number(row.price || 0),
+    badge: row.badge || "Urban",
+    image,
+    gallery,
+    stock: Number(row.stock ?? 0),
+    description: row.description || ""
+  };
+}
+
+async function loadStoreProducts() {
+  if (!cloudEnabled) return;
+  const { data, error } = await db
+    .from("products")
+    .select("id,name,category,color,sizes,price,badge,image_url,gallery_urls,stock,description,published,sort_order,created_at")
+    .eq("published", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("Urban Legacy: produtos locais usados como reserva.", error);
+    return;
+  }
+
+  if (data?.length) products = data.map(productFromRow);
+}
+
+async function setupCustomerSession() {
+  if (!cloudEnabled) return;
+  const { data } = await db.auth.getSession();
+  currentCustomer = data.session?.user || null;
+  updateAccountState();
+  db.auth.onAuthStateChange((_event, session) => {
+    currentCustomer = session?.user || null;
+    updateAccountState();
+  });
+  if (!currentCustomer) window.setTimeout(openAuthModal, 500);
+}
+
+function updateAccountState() {
+  $("account-button")?.classList.toggle("is-logged", Boolean(currentCustomer));
+}
+
+function whatsappLink(message) {
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function loadCart() {
+  try {
+    return JSON.parse(localStorage.getItem("urbanLegacyCart")) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCart() {
+  localStorage.setItem("urbanLegacyCart", JSON.stringify(cart));
+}
+
+function productInitials(product) {
+  return product.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+function filteredProducts() {
+  const query = normalizeSearchText($("search-input").value);
+  const sort = $("sort-select").value;
+  return getFilteredProducts({ category: currentCategory, query, sort });
+}
+
+function getFilteredProducts({ category, query = "", sort = "featured", maxPrice = Infinity, brandEnabled = true }) {
+  const normalizedQuery = normalizeSearchText(query);
+  const list = products.filter((product) => {
+    const inCategory = category === "Todos" || product.category === category;
+    const haystack = normalizeSearchText(`${product.name} ${product.category} ${product.color}`);
+    const inSearch = haystack.includes(normalizedQuery);
+    const inBrand = brandEnabled;
+    const inPrice = product.price <= maxPrice;
+    return inCategory && inSearch && inBrand && inPrice;
+  });
+
+  return list.sort((a, b) => {
+    if (sort === "price-asc") return a.price - b.price;
+    if (sort === "price-desc") return b.price - a.price;
+    if (sort === "name") return a.name.localeCompare(b.name, "pt-BR");
+    return products.indexOf(a) - products.indexOf(b);
+  });
+}
+
+function productCardHTML(product) {
+  return `
+    <article class="product-card" data-product-card="${product.id}" tabindex="0" role="button" aria-label="Ver detalhes de ${product.name}">
+      <div class="product-media" data-initials="${productInitials(product)}">
+        <img src="${product.image}" alt="${product.name}" loading="lazy" />
+        <span class="product-badge">${product.badge}</span>
+      </div>
+      <div class="product-info">
+        <h3>${product.name}</h3>
+        <div class="product-meta">
+          <span>${product.category}</span>
+          <span>${product.color}</span>
+        </div>
+        <strong class="price">${money.format(product.price)}</strong>
+        <div class="size-row">${product.sizes.map((size) => `<span>${size}</span>`).join("")}</div>
+        <button class="primary-button" data-add="${product.id}">
+          <i data-lucide="plus"></i>Adicionar
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function bindProductButtons(container = document) {
+  container.querySelectorAll("[data-product-card]").forEach((card) => {
+    card.addEventListener("click", () => showProductPage(card.dataset.productCard));
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showProductPage(card.dataset.productCard);
+      }
+    });
+  });
+  container.querySelectorAll("[data-add]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      addToCart(button.dataset.add);
+    });
+  });
+}
+
+function renderProducts() {
+  const list = filteredProducts();
+  $("empty-state").hidden = list.length > 0;
+  $("product-grid").innerHTML = list.map(productCardHTML).join("");
+
+  bindProductButtons($("product-grid"));
+  refreshIcons();
+}
+
+function setCategory(category) {
+  currentCategory = category;
+  document.querySelectorAll(".category-link").forEach((button) => {
+    button.classList.toggle("active", button.dataset.category === category);
+  });
+  document.querySelectorAll("[data-menu-category]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.menuCategory === category);
+  });
+  renderProducts();
+  renderCatalog();
+}
+
+function showHome() {
+  currentPage = "home";
+  currentSearchTerm = "";
+  $("home-page").classList.remove("page-hidden");
+  $("catalog-page").classList.add("page-hidden");
+  $("search-results-page").classList.add("page-hidden");
+  $("product-detail-page").classList.add("page-hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showCatalogPage(category) {
+  currentPage = "catalog";
+  setCategory(category);
+  $("home-page").classList.add("page-hidden");
+  $("catalog-page").classList.remove("page-hidden");
+  $("search-results-page").classList.add("page-hidden");
+  $("product-detail-page").classList.add("page-hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showSearchPage(term) {
+  currentPage = "search";
+  currentSearchTerm = term.trim();
+  $("home-page").classList.add("page-hidden");
+  $("catalog-page").classList.add("page-hidden");
+  $("product-detail-page").classList.add("page-hidden");
+  $("search-results-page").classList.remove("page-hidden");
+  renderSearchResults();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function productById(productId) {
+  return products.find((product) => product.id === productId);
+}
+
+function productImages(product) {
+  const gallery = Array.isArray(product.gallery) && product.gallery.length ? product.gallery : [product.image];
+  return [...new Set([...gallery, product.image, bannerImage].filter(Boolean))].slice(0, 5);
+}
+
+function showProductPage(productId) {
+  const product = productById(productId);
+  if (!product) return;
+  currentPage = "product";
+  currentProductId = productId;
+  setCategory(product.category);
+  renderProductDetail(product);
+  $("home-page").classList.add("page-hidden");
+  $("catalog-page").classList.add("page-hidden");
+  $("search-results-page").classList.add("page-hidden");
+  $("product-detail-page").classList.remove("page-hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderProductDetail(product) {
+  const images = productImages(product);
+  $("detail-breadcrumb-category").textContent = product.category;
+  $("detail-breadcrumb-name").textContent = product.name;
+  $("detail-category").textContent = product.category;
+  $("detail-name").textContent = product.name;
+  $("detail-price").textContent = money.format(product.price);
+  $("detail-installments").textContent = `ou atendimento direto para combinar pagamento`;
+  $("detail-main-image").style.setProperty("--detail-image", `url("${images[0]}")`);
+  $("detail-thumbs").innerHTML = images
+    .map((image, index) => `<button class="detail-thumb ${index === 0 ? "active" : ""}" style="--thumb-image:url('${image}')" data-detail-image="${image}" aria-label="Ver imagem ${index + 1}"></button>`)
+    .join("");
+  $("detail-color-options").innerHTML = [product.color, "Off white", "Preto"].filter((value, index, array) => array.indexOf(value) === index)
+    .map((color, index) => `<button class="option-button ${index === 0 ? "active" : ""}" type="button">${color}</button>`)
+    .join("");
+  $("detail-size-options").innerHTML = product.sizes
+    .map((size, index) => `<button class="option-button ${index === 0 ? "active" : ""}" type="button">${size}</button>`)
+    .join("");
+  $("detail-whatsapp").href = whatsappLink(productOrderMessage(product));
+  bindDetailInteractions();
+  refreshIcons();
+}
+
+function selectedDetailOption(selector) {
+  return document.querySelector(`${selector} .option-button.active`)?.textContent.trim() || "";
+}
+
+function productOrderMessage(product) {
+  const selectedColor = selectedDetailOption("#detail-color-options") || product.color;
+  const selectedSize = selectedDetailOption("#detail-size-options") || product.sizes[0] || "Único";
+  return [
+    "Olá, quero fazer um pedido na Urban Legacy.",
+    "",
+    "PRODUTO EM DESTAQUE:",
+    `*${product.name.toUpperCase()}*`,
+    "",
+    `Categoria: ${product.category}`,
+    `Cor: ${selectedColor}`,
+    `Tamanho: ${selectedSize}`,
+    `Preço: ${money.format(product.price)}`,
+    "",
+    "Pode me confirmar disponibilidade e frete?"
+  ].join("\n");
+}
+
+function bindDetailInteractions() {
+  document.querySelectorAll(".detail-thumb").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".detail-thumb").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      $("detail-main-image").style.setProperty("--detail-image", `url("${button.dataset.detailImage}")`);
+    });
+  });
+  document.querySelectorAll(".option-grid").forEach((group) => {
+    group.querySelectorAll(".option-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        group.querySelectorAll(".option-button").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        const product = productById(currentProductId);
+        if (product) $("detail-whatsapp").href = whatsappLink(productOrderMessage(product));
+      });
+    });
+  });
+}
+
+function activeMaxPrice() {
+  return Number($("price-filter").value || $("price-filter").max);
+}
+
+function updatePriceSlider() {
+  const slider = $("price-filter");
+  const value = Number(slider.value);
+  const min = Number(slider.min);
+  const max = Number(slider.max);
+  const progress = ((value - min) / (max - min)) * 100;
+  slider.style.setProperty("--range-progress", `${progress}%`);
+  $("price-filter-label").textContent = value >= max ? "Todos" : money.format(value);
+}
+
+function renderCatalog() {
+  $("catalog-title").textContent = currentCategory;
+  $("breadcrumb-category").textContent = currentCategory;
+  updatePriceSlider();
+  const query = $("search-input").value.trim().toLowerCase();
+  const sort = $("catalog-sort-select").value;
+  const brandEnabled = $("brand-filter").checked;
+  const list = getFilteredProducts({
+    category: currentCategory,
+    query,
+    sort,
+    maxPrice: activeMaxPrice(),
+    brandEnabled
+  });
+  $("catalog-empty").hidden = list.length > 0;
+  $("catalog-grid").innerHTML = list.map(productCardHTML).join("");
+  bindProductButtons($("catalog-grid"));
+  refreshIcons();
+}
+
+function renderSearchResults() {
+  const term = currentSearchTerm || $("search-input").value.trim();
+  const sort = $("search-sort-select").value;
+  $("search-title").textContent = term ? `Busca por "${term}"` : "Busca";
+  $("search-breadcrumb-term").textContent = term ? `Busca por "${term}"` : "Busca";
+  const list = term
+    ? getFilteredProducts({ category: "Todos", query: term, sort })
+    : [];
+  $("search-empty").hidden = list.length > 0;
+  $("search-grid").innerHTML = list.map(productCardHTML).join("");
+  bindProductButtons($("search-grid"));
+  refreshIcons();
+}
+
+function addToCart(productId) {
+  const existing = cart.find((item) => item.id === productId);
+  if (existing) existing.qty += 1;
+  else cart.push({ id: productId, qty: 1 });
+  saveCart();
+  renderCart();
+  toast("Produto adicionado ao carrinho");
+}
+
+function updateQty(productId, delta) {
+  const item = cart.find((cartItem) => cartItem.id === productId);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) cart = cart.filter((cartItem) => cartItem.id !== productId);
+  saveCart();
+  renderCart();
+}
+
+function removeFromCart(productId) {
+  cart = cart.filter((item) => item.id !== productId);
+  saveCart();
+  renderCart();
+}
+
+function cartDetails() {
+  return cart
+    .map((item) => {
+      const product = products.find((entry) => entry.id === item.id);
+      if (!product) return null;
+      return { ...item, product, subtotal: product.price * item.qty };
+    })
+    .filter(Boolean);
+}
+
+function renderCart() {
+  const details = cartDetails();
+  const totalQty = details.reduce((sum, item) => sum + item.qty, 0);
+  const total = details.reduce((sum, item) => sum + item.subtotal, 0);
+  $("cart-count").textContent = totalQty;
+  $("cart-total").textContent = money.format(total);
+
+  $("cart-items").innerHTML = details.length
+    ? details
+        .map(
+          (item) => `
+            <article class="cart-item">
+              <div>
+                <h3>${item.product.name}</h3>
+                <p>${money.format(item.product.price)} cada</p>
+                <button class="remove-button" data-remove="${item.id}">Remover</button>
+              </div>
+              <div class="qty-control">
+                <button data-minus="${item.id}" aria-label="Diminuir quantidade">-</button>
+                <strong>${item.qty}</strong>
+                <button data-plus="${item.id}" aria-label="Aumentar quantidade">+</button>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : `
+      <div class="cart-empty">
+        <p class="empty-state">Seu carrinho está vazio.</p>
+        <button class="secondary-button full" id="cart-start-shopping" type="button">Iniciar compra</button>
+      </div>
+    `;
+
+  document.querySelectorAll("[data-minus]").forEach((button) => {
+    button.addEventListener("click", () => updateQty(button.dataset.minus, -1));
+  });
+  document.querySelectorAll("[data-plus]").forEach((button) => {
+    button.addEventListener("click", () => updateQty(button.dataset.plus, 1));
+  });
+  document.querySelectorAll("[data-remove]").forEach((button) => {
+    button.addEventListener("click", () => removeFromCart(button.dataset.remove));
+  });
+  $("cart-start-shopping")?.addEventListener("click", () => {
+    closeCart();
+    showHome();
+    window.setTimeout(() => {
+      document.querySelector("#produtos").scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  });
+
+  const orderText = details.length
+    ? details.map((item) => [
+        `*${item.product.name.toUpperCase()}*`,
+        `Quantidade: ${item.qty}`,
+        `Categoria: ${item.product.category}`,
+        `Cor: ${item.product.color}`,
+        `Tamanho: ${item.product.sizes.join(", ")}`,
+        `Subtotal: ${money.format(item.subtotal)}`
+      ].join("\n")).join("\n\n")
+    : "Olá, quero conhecer os produtos da Urban Legacy.";
+  const message = details.length
+    ? `Olá, quero finalizar meu pedido na Urban Legacy.\n\nPRODUTO(S) EM DESTAQUE:\n\n${orderText}\n\nTOTAL: ${money.format(total)}\n\nPode me confirmar disponibilidade e frete?`
+    : orderText;
+  $("checkout-link").href = whatsappLink(message);
+  refreshIcons();
+}
+
+async function requireCustomerAccount() {
+  if (!cloudEnabled || currentCustomer) return true;
+  openAuthModal();
+  toast("Crie sua conta para finalizar o pedido");
+  return false;
+}
+
+async function createOrderRecord({ items, message }) {
+  if (!cloudEnabled || !currentCustomer || !items.length) return null;
+  const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const meta = currentCustomer.user_metadata || {};
+  const { data: order, error } = await db
+    .from("orders")
+    .insert({
+      customer_user_id: currentCustomer.id,
+      customer_name: meta.name || currentCustomer.email,
+      customer_phone: meta.phone || "",
+      customer_email: currentCustomer.email,
+      status: "Novo",
+      total,
+      whatsapp_message: message
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.warn("Urban Legacy: pedido nao foi salvo no painel.", error);
+    toast("Pedido vai para o WhatsApp, mas nao salvou na gestao");
+    return null;
+  }
+
+  const orderItems = items.map((item) => ({
+    order_id: order.id,
+    product_id: item.product.id,
+    product_name: item.product.name,
+    category: item.product.category,
+    color: item.product.color,
+    size: item.product.sizes.join(", "),
+    qty: item.qty,
+    unit_price: item.product.price,
+    subtotal: item.subtotal
+  }));
+  await db.from("order_items").insert(orderItems);
+  return order.id;
+}
+
+function cartOrderMessage(details) {
+  const total = details.reduce((sum, item) => sum + item.subtotal, 0);
+  if (!details.length) return "Olá, quero conhecer os produtos da Urban Legacy.";
+  const orderText = details.map((item) => [
+    `*${item.product.name.toUpperCase()}*`,
+    `Quantidade: ${item.qty}`,
+    `Categoria: ${item.product.category}`,
+    `Cor: ${item.product.color}`,
+    `Tamanho: ${item.product.sizes.join(", ")}`,
+    `Subtotal: ${money.format(item.subtotal)}`
+  ].join("\n")).join("\n\n");
+  return `Olá, quero finalizar meu pedido na Urban Legacy.\n\nPRODUTO(S) EM DESTAQUE:\n\n${orderText}\n\nTOTAL: ${money.format(total)}\n\nPode me confirmar disponibilidade e frete?`;
+}
+
+async function handleCheckout(event) {
+  event.preventDefault();
+  const details = cartDetails();
+  if (!details.length) {
+    window.open(whatsappLink("Olá, quero conhecer os produtos da Urban Legacy."), "_blank", "noopener");
+    return;
+  }
+  if (!(await requireCustomerAccount())) return;
+  const message = cartOrderMessage(details);
+  await createOrderRecord({ items: details, message });
+  window.open(whatsappLink(message), "_blank", "noopener");
+}
+
+async function handleProductWhatsApp(event) {
+  event.preventDefault();
+  const product = productById(currentProductId);
+  if (!product) return;
+  if (!(await requireCustomerAccount())) return;
+  const message = productOrderMessage(product);
+  await createOrderRecord({
+    items: [{ id: product.id, qty: 1, product, subtotal: product.price }],
+    message
+  });
+  window.open(whatsappLink(message), "_blank", "noopener");
+}
+
+function openCart() {
+  $("cart-drawer").classList.add("open");
+  $("cart-drawer").setAttribute("aria-hidden", "false");
+  document.body.classList.add("drawer-open");
+}
+
+function closeCart() {
+  $("cart-drawer").classList.remove("open");
+  $("cart-drawer").setAttribute("aria-hidden", "true");
+  document.body.classList.remove("drawer-open");
+}
+
+function openMenu() {
+  $("menu-page").classList.add("open");
+  $("menu-page").setAttribute("aria-hidden", "false");
+  document.body.classList.add("menu-open");
+}
+
+function closeMenu() {
+  $("menu-page").classList.remove("open");
+  $("menu-page").setAttribute("aria-hidden", "true");
+  document.body.classList.remove("menu-open");
+}
+
+function openAuthModal() {
+  $("auth-modal")?.classList.add("open");
+  $("auth-modal")?.setAttribute("aria-hidden", "false");
+  document.body.classList.add("drawer-open");
+}
+
+function closeAuthModal() {
+  $("auth-modal")?.classList.remove("open");
+  $("auth-modal")?.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("drawer-open");
+}
+
+function setAuthStatus(message, isError = false) {
+  const status = $("auth-status");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function authFields() {
+  return {
+    name: $("auth-name").value.trim(),
+    phone: $("auth-phone").value.trim(),
+    email: $("auth-email").value.trim(),
+    password: $("auth-password").value
+  };
+}
+
+async function saveCustomerProfile(user, fields) {
+  if (!cloudEnabled || !user) return;
+  await db.from("customer_profiles").upsert({
+    user_id: user.id,
+    name: fields.name || user.user_metadata?.name || user.email,
+    phone: fields.phone || user.user_metadata?.phone || "",
+    email: user.email
+  }, { onConflict: "user_id" });
+}
+
+async function signUpCustomer() {
+  if (!cloudEnabled) {
+    setAuthStatus("Conecte o Supabase para ativar cadastro.", true);
+    return;
+  }
+  const fields = authFields();
+  if (!fields.email || !fields.password || !fields.name) {
+    setAuthStatus("Preencha nome, e-mail e senha.", true);
+    return;
+  }
+  setAuthStatus("Criando sua conta...");
+  const { data, error } = await db.auth.signUp({
+    email: fields.email,
+    password: fields.password,
+    options: { data: { name: fields.name, phone: fields.phone } }
+  });
+  if (error) {
+    setAuthStatus(error.message, true);
+    return;
+  }
+  if (data.user) await saveCustomerProfile(data.user, fields);
+  currentCustomer = data.session?.user || data.user || null;
+  updateAccountState();
+  setAuthStatus(data.session ? "Conta criada. Voce ja pode comprar." : "Conta criada. Confirme seu e-mail para entrar.");
+  if (data.session) window.setTimeout(closeAuthModal, 700);
+}
+
+async function signInCustomer() {
+  if (!cloudEnabled) {
+    setAuthStatus("Conecte o Supabase para ativar login.", true);
+    return;
+  }
+  const fields = authFields();
+  if (!fields.email || !fields.password) {
+    setAuthStatus("Informe e-mail e senha.", true);
+    return;
+  }
+  setAuthStatus("Entrando...");
+  const { data, error } = await db.auth.signInWithPassword({
+    email: fields.email,
+    password: fields.password
+  });
+  if (error) {
+    setAuthStatus(error.message, true);
+    return;
+  }
+  currentCustomer = data.user;
+  await saveCustomerProfile(data.user, fields);
+  updateAccountState();
+  setAuthStatus("Voce entrou na sua conta.");
+  window.setTimeout(closeAuthModal, 500);
+}
+
+async function signOutCustomer() {
+  if (!cloudEnabled) return;
+  await db.auth.signOut();
+  currentCustomer = null;
+  updateAccountState();
+  setAuthStatus("Voce saiu da conta.");
 }
 
 function toast(message) {
   const el = $("toast");
   el.textContent = message;
   el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 2100);
+  window.clearTimeout(toast.timer);
+  toast.timer = window.setTimeout(() => el.classList.remove("show"), 1900);
 }
 
-function authMessage(message, type = "info") {
-  const el = $("auth-message");
-  if (!el) return;
-  el.textContent = message;
-  el.className = `auth-message show ${type === "error" ? "error" : ""}`;
-}
-
-function clearAuthMessage() {
-  const el = $("auth-message");
-  if (!el) return;
-  el.textContent = "";
-  el.className = "auth-message";
-}
-
-async function init() {
-  ensureStateShape();
-  setupCloud();
-  if (cloudEnabled) bindAuth();
-  const canLoad = await setupAuth();
-  if (canLoad) await loadCloudState();
-  populateCategories();
-  bindNavigation();
-  bindForms();
-  render();
-  calculatePrice();
+function refreshIcons() {
   if (window.lucide) lucide.createIcons();
 }
 
-function populateCategories() {
-  const selects = [$("product-category")];
-  selects.forEach((select) => {
-    select.innerHTML = categories.map((cat) => `<option>${cat}</option>`).join("");
+function bindEvents() {
+  $("search-input").addEventListener("input", () => {
+    const term = $("search-input").value.trim();
+    if (term) showSearchPage(term);
+    else showHome();
   });
-}
-
-function bindNavigation() {
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.addEventListener("click", () => showView(button.dataset.view));
-  });
-  document.querySelectorAll("[data-jump]").forEach((button) => {
-    button.addEventListener("click", () => showView(button.dataset.jump));
-  });
-  $("global-search").addEventListener("input", renderProducts);
-  $("seed-demo").addEventListener("click", async () => {
-    state = structuredClone(starterData);
-    if (cloudEnabled) {
-      await Promise.all([
-        db.from("sales").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("customers").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("customer_references").delete().neq("id", "00000000-0000-0000-0000-000000000000")
-      ]);
-      await seedCloud();
-      await loadCloudState();
-    } else {
-      saveState();
+  $("search-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const term = $("search-input").value.trim();
+      if (term) showSearchPage(term);
     }
-    render();
-    toast("Dados de exemplo repostos");
   });
-}
-
-function showView(view) {
-  document.querySelectorAll(".view").forEach((el) => el.classList.toggle("active", el.id === view));
-  document.querySelectorAll(".nav-item").forEach((el) => el.classList.toggle("active", el.dataset.view === view));
-  const titles = {
-    dashboard: "Painel de controle",
-    products: "Estoque inteligente",
-    pricing: "Precificação de revenda",
-    sales: "Gestão de vendas",
-    customers: "Clientes e relacionamento",
-    references: "Referências dos clientes",
-    reports: "Relatórios da operação"
-  };
-  $("view-title").textContent = titles[view];
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function bindForms() {
-  $("product-form").addEventListener("submit", saveProduct);
-  $("cancel-product-edit").addEventListener("click", resetProductForm);
-  $("sale-form").addEventListener("submit", (event) => saveSale(event, "sale"));
-  $("quick-sale-form").addEventListener("submit", (event) => saveSale(event, "quick"));
-  $("customer-form").addEventListener("submit", saveCustomer);
-  $("reference-form").addEventListener("submit", saveReference);
-  $("pricing-form").addEventListener("input", calculatePrice);
-  $("copy-price").addEventListener("click", () => {
-    navigator.clipboard?.writeText($("suggested-price").textContent);
-    toast("Preço copiado");
+  $("sort-select").addEventListener("change", renderProducts);
+  $("catalog-sort-select").addEventListener("change", renderCatalog);
+  $("search-sort-select").addEventListener("change", renderSearchResults);
+  document.querySelectorAll("#price-filter, #brand-filter").forEach((input) => {
+    input.addEventListener("change", renderCatalog);
+    input.addEventListener("input", renderCatalog);
   });
-  $("sale-product").addEventListener("change", syncSalePrice);
+  $("brand-home").addEventListener("click", (event) => {
+    event.preventDefault();
+    $("search-input").value = "";
+    showHome();
+  });
+  $("breadcrumb-home").addEventListener("click", showHome);
+  $("search-breadcrumb-home").addEventListener("click", () => {
+    $("search-input").value = "";
+    showHome();
+  });
+  document.querySelectorAll(".detail-home").forEach((button) => button.addEventListener("click", showHome));
+  $("detail-breadcrumb-category").addEventListener("click", () => showCatalogPage(currentCategory));
+  $("detail-add-cart").addEventListener("click", () => {
+    if (currentProductId) addToCart(currentProductId);
+  });
+  $("detail-whatsapp").addEventListener("click", handleProductWhatsApp);
+  $("cart-open").addEventListener("click", openCart);
+  $("account-button").addEventListener("click", openAuthModal);
+  $("nav-menu-open").addEventListener("click", openMenu);
+  $("cart-close").addEventListener("click", closeCart);
+  $("checkout-link").addEventListener("click", handleCheckout);
+  $("cart-drawer").addEventListener("click", (event) => {
+    if (event.target === $("cart-drawer")) closeCart();
+  });
+  $("auth-close").addEventListener("click", closeAuthModal);
+  $("auth-modal").addEventListener("click", (event) => {
+    if (event.target === $("auth-modal")) closeAuthModal();
+  });
+  $("auth-signup").addEventListener("click", signUpCustomer);
+  $("auth-login").addEventListener("click", signInCustomer);
+  $("auth-logout").addEventListener("click", signOutCustomer);
+  $("menu-toggle").addEventListener("click", openMenu);
+  $("menu-close").addEventListener("click", closeMenu);
+  $("menu-page").addEventListener("click", (event) => {
+    if (event.target === $("menu-page")) closeMenu();
+  });
+  $("menu-categories-link").addEventListener("click", (event) => {
+    event.preventDefault();
+    closeMenu();
+    showHome();
+    window.setTimeout(() => {
+      document.querySelector("#categorias").scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  });
+  document.querySelectorAll("[data-menu-category]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeMenu();
+      showCatalogPage(button.dataset.menuCategory);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeCart();
+      closeMenu();
+      closeAuthModal();
+    }
+  });
+  document.querySelectorAll("[data-category]").forEach((button) => {
+    button.addEventListener("click", () => showCatalogPage(button.dataset.category));
+  });
+  document.querySelectorAll("[data-category-card]").forEach((button) => {
+    button.addEventListener("click", () => showCatalogPage(button.dataset.categoryCard));
+  });
+  document.querySelectorAll("[data-whatsapp-default]").forEach((link) => {
+    link.href = whatsappLink("Olá, quero atendimento da Urban Legacy.");
+  });
+  $("back-to-top").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  window.addEventListener("scroll", () => {
+    $("back-to-top").classList.toggle("visible", window.scrollY > 520);
+  }, { passive: true });
 }
 
-function render() {
-  renderSelectors();
-  renderMetrics();
+document.addEventListener("DOMContentLoaded", async () => {
+  bindEvents();
   renderProducts();
-  renderSales();
-  renderCustomers();
-  renderReferences();
-  renderDashboard();
-  renderReports();
-  if (window.lucide) lucide.createIcons();
-}
-
-function renderSelectors() {
-  const options = state.products
-    .map((product) => `<option value="${product.id}">${product.name} - ${product.sku}</option>`)
-    .join("");
-  $("quick-product").innerHTML = options || "<option>Nenhum produto cadastrado</option>";
-  $("sale-product").innerHTML = options || "<option>Nenhum produto cadastrado</option>";
-  renderCustomerReferenceOptions();
-  syncSalePrice();
-}
-
-function renderCustomerReferenceOptions() {
-  const options = state.customers
-    .map((customer) => `<option value="${customer.id}">${customer.name}</option>`)
-    .join("");
-  $("reference-customer").innerHTML = options || "<option value=\"\">Cliente avulso</option>";
-}
-
-function totals() {
-  const revenue = state.sales.reduce((sum, sale) => sum + sale.total, 0);
-  const profit = state.sales.reduce((sum, sale) => sum + sale.profit, 0);
-  const stock = state.products.reduce((sum, product) => sum + product.stock, 0);
-  const low = state.products.filter((product) => product.stock <= product.min).length;
-  const ticket = state.sales.length ? revenue / state.sales.length : 0;
-  return { revenue, profit, stock, low, ticket };
-}
-
-function renderMetrics() {
-  const total = totals();
-  $("metric-revenue").textContent = money.format(total.revenue);
-  $("metric-profit").textContent = money.format(total.profit);
-  $("metric-stock").textContent = total.stock;
-  $("metric-low").textContent = `${total.low} em alerta`;
-  $("metric-ticket").textContent = money.format(total.ticket);
-  $("sidebar-profit").textContent = money.format(total.profit);
-}
-
-function renderProducts() {
-  const search = $("global-search").value.trim().toLowerCase();
-  const filtered = state.products.filter((product) => {
-    const haystack = `${product.name} ${product.sku} ${product.category} ${product.color} ${product.supplier}`.toLowerCase();
-    return haystack.includes(search);
-  });
-  $("product-count").textContent = `${filtered.length} produtos`;
-  $("products-table").innerHTML = filtered.map((product) => `
-    <tr>
-      <td><b>${product.name}</b><p class="item-sub">${product.color || "Sem cor"} • ${product.size || "Sem tamanho"}</p></td>
-      <td>${product.category}</td>
-      <td>${product.sku}</td>
-      <td class="${product.stock <= product.min ? "status-low" : "status-ok"}">${product.stock}</td>
-      <td>${money.format(product.price)}</td>
-      <td>
-        <div class="row-actions">
-          <button class="mini-button" title="Editar preço e estoque" onclick="editProduct('${product.id}')"><i data-lucide="pencil"></i>Editar preço/estoque</button>
-          <button class="mini-button danger" title="Remover do estoque" onclick="deleteProduct('${product.id}')"><i data-lucide="trash-2"></i>Remover</button>
-        </div>
-      </td>
-    </tr>
-  `).join("") || `<tr><td colspan="6">Nenhum produto encontrado.</td></tr>`;
-}
-
-async function saveProduct(event) {
-  event.preventDefault();
-  const product = {
-    id: $("product-id").value || crypto.randomUUID(),
-    name: $("product-name").value.trim(),
-    category: $("product-category").value,
-    sku: $("product-sku").value.trim(),
-    size: $("product-size").value.trim(),
-    color: $("product-color").value.trim(),
-    supplier: $("product-supplier").value.trim(),
-    cost: num("product-cost"),
-    stock: num("product-stock"),
-    min: num("product-min"),
-    price: num("product-price")
-  };
-  const index = state.products.findIndex((item) => item.id === product.id);
-  if (index >= 0) state.products[index] = product;
-  else state.products.push(product);
-
-  if (cloudEnabled) {
-    const { error } = await db.from("products").upsert(toProductRow(product));
-    if (error) return toast("Erro ao salvar no Supabase");
-  } else {
-    saveState();
-  }
-
-  event.target.reset();
-  resetProductForm();
-  render();
-  toast("Produto salvo");
-}
-
-function resetProductForm() {
-  $("product-form").reset();
-  $("product-id").value = "";
-  $("product-min").value = 3;
-  $("product-form-title").textContent = "Cadastrar produto";
-  $("cancel-product-edit").hidden = true;
-}
-
-function editProduct(id) {
-  const product = state.products.find((item) => item.id === id);
-  if (!product) return;
-  $("product-id").value = product.id;
-  $("product-name").value = product.name;
-  $("product-category").value = product.category;
-  $("product-sku").value = product.sku;
-  $("product-size").value = product.size;
-  $("product-color").value = product.color;
-  $("product-supplier").value = product.supplier;
-  $("product-cost").value = product.cost;
-  $("product-stock").value = product.stock;
-  $("product-min").value = product.min;
-  $("product-price").value = product.price;
-  $("product-form-title").textContent = "Editar produto";
-  $("cancel-product-edit").hidden = false;
-  showView("products");
-  $("product-price").focus();
-}
-
-async function deleteProduct(id) {
-  const product = state.products.find((item) => item.id === id);
-  if (!product) return;
-  const ok = window.confirm(`Remover "${product.name}" do estoque? Essa ação apaga o produto cadastrado.`);
-  if (!ok) return;
-  state.products = state.products.filter((product) => product.id !== id);
-  if (cloudEnabled) {
-    const { error } = await db.from("products").delete().eq("id", id);
-    if (error) return toast("Erro ao remover no Supabase");
-  } else {
-    saveState();
-  }
-  render();
-  toast("Produto removido");
-}
-
-function syncSalePrice() {
-  const product = state.products.find((item) => item.id === $("sale-product").value);
-  if (product) $("sale-price").value = product.price;
-}
-
-async function saveSale(event, mode) {
-  event.preventDefault();
-  const productId = mode === "quick" ? $("quick-product").value : $("sale-product").value;
-  const qty = mode === "quick" ? num("quick-qty") : num("sale-qty");
-  const product = state.products.find((item) => item.id === productId);
-  if (!product || qty <= 0) return toast("Selecione um produto válido");
-  if (product.stock < qty) return toast("Estoque insuficiente");
-
-  const unitPrice = mode === "quick" ? product.price : num("sale-price");
-  const customer = mode === "quick" ? $("quick-customer").value.trim() : $("sale-customer").value.trim();
-  const total = unitPrice * qty;
-  const fee = total * 0.08;
-  const cost = product.cost * qty;
-  const profit = total - fee - cost;
-  product.stock -= qty;
-  const sale = {
-    id: crypto.randomUUID(),
-    date: new Date().toISOString(),
-    productId,
-    productName: product.name,
-    qty,
-    customer: customer || "Cliente avulso",
-    channel: mode === "quick" ? "Venda rápida" : $("sale-channel").value,
-    status: mode === "quick" ? "Pago" : $("sale-status").value,
-    total,
-    profit
-  };
-  state.sales.unshift(sale);
-
-  if (cloudEnabled) {
-    const saleResult = await db.from("sales").insert(toSaleRow(sale));
-    const productResult = await db.from("products").update({ stock: product.stock }).eq("id", product.id);
-    if (saleResult.error || productResult.error) return toast("Erro ao registrar no Supabase");
-  } else {
-    saveState();
-  }
-
-  event.target.reset();
-  $("quick-qty").value = 1;
-  $("sale-qty").value = 1;
-  render();
-  toast("Venda registrada");
-}
-
-function renderSales() {
-  $("sales-table").innerHTML = state.sales.map((sale) => `
-    <tr>
-      <td>${dateFmt.format(new Date(sale.date))}</td>
-      <td><b>${sale.productName}</b><p class="item-sub">${sale.qty} un. • ${sale.channel}</p></td>
-      <td>${sale.customer}</td>
-      <td>${money.format(sale.total)}</td>
-      <td class="${sale.profit >= 0 ? "status-ok" : "status-low"}">${money.format(sale.profit)}</td>
-    </tr>
-  `).join("") || `<tr><td colspan="5">Nenhuma venda registrada.</td></tr>`;
-}
-
-async function saveCustomer(event) {
-  event.preventDefault();
-  const customer = {
-    id: crypto.randomUUID(),
-    name: $("customer-name").value.trim(),
-    phone: $("customer-phone").value.trim(),
-    instagram: $("customer-instagram").value.trim(),
-    style: $("customer-style").value,
-    notes: $("customer-notes").value.trim()
-  };
-  state.customers.unshift(customer);
-
-  if (cloudEnabled) {
-    const { error } = await db.from("customers").insert(toCustomerRow(customer));
-    if (error) return toast("Erro ao salvar cliente no Supabase");
-  } else {
-    saveState();
-  }
-
-  event.target.reset();
-  render();
-  toast("Cliente salvo");
-}
-
-function renderCustomers() {
-  $("customer-list").innerHTML = state.customers.map((customer) => `
-    <article class="customer-item">
-      <div>
-        <p class="item-title">${customer.name}</p>
-        <p class="item-sub">${customer.phone || "Sem WhatsApp"} • ${customer.instagram || "Sem Instagram"}</p>
-      </div>
-      <span class="pill">${customer.style}</span>
-    </article>
-  `).join("") || `<p class="item-sub">Nenhum cliente cadastrado.</p>`;
-}
-
-async function saveReference(event) {
-  event.preventDefault();
-  const customer = state.customers.find((item) => item.id === $("reference-customer").value);
-  const reference = {
-    id: crypto.randomUUID(),
-    customerId: customer?.id || null,
-    customerName: customer?.name || "Cliente avulso",
-    type: $("reference-type").value,
-    topSize: $("reference-top-size").value.trim(),
-    bottomSize: $("reference-bottom-size").value.trim(),
-    shoeSize: $("reference-shoe-size").value.trim(),
-    colors: $("reference-colors").value.trim(),
-    style: $("reference-style").value.trim(),
-    budget: num("reference-budget"),
-    link: $("reference-link").value.trim(),
-    notes: $("reference-notes").value.trim(),
-    date: new Date().toISOString()
-  };
-
-  state.references.unshift(reference);
-
-  if (cloudEnabled) {
-    const { error } = await db.from("customer_references").insert(toReferenceRow(reference));
-    if (error) {
-      state.references = state.references.filter((item) => item.id !== reference.id);
-      return toast("Crie a tabela de referências no Supabase");
-    }
-  } else {
-    saveState();
-  }
-
-  event.target.reset();
-  render();
-  toast("Referência salva");
-}
-
-function renderReferences() {
-  $("reference-count").textContent = `${state.references.length} referências`;
-  $("reference-list").innerHTML = state.references.map((reference) => {
-    const tags = [
-      reference.topSize && `Superior ${reference.topSize}`,
-      reference.bottomSize && `Inferior ${reference.bottomSize}`,
-      reference.shoeSize && `Calçado ${reference.shoeSize}`,
-      reference.colors && `Cores ${reference.colors}`,
-      reference.style && reference.style,
-      reference.budget ? `Até ${money.format(reference.budget)}` : ""
-    ].filter(Boolean);
-
-    return `
-      <article class="reference-item">
-        <div class="reference-meta">
-          <div>
-            <p class="item-title">${reference.customerName}</p>
-            <p class="item-sub">${reference.type} • ${dateFmt.format(new Date(reference.date))}</p>
-          </div>
-          <span class="pill">${reference.type}</span>
-        </div>
-        ${tags.length ? `<div class="reference-tags">${tags.map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
-        ${reference.notes ? `<p class="item-sub">${reference.notes}</p>` : ""}
-        ${reference.link ? `<a class="reference-link" href="${reference.link}" target="_blank" rel="noreferrer">Abrir referência</a>` : ""}
-      </article>
-    `;
-  }).join("") || `<p class="item-sub">Nenhuma referência salva ainda.</p>`;
-}
-
-function renderDashboard() {
-  const lowProducts = state.products.filter((product) => product.stock <= product.min);
-  $("stock-alert-list").innerHTML = lowProducts.map((product) => `
-    <article class="alert-item">
-      <div><p class="item-title">${product.name}</p><p class="item-sub">${product.sku} • mínimo ${product.min}</p></div>
-      <strong class="status-low">${product.stock}</strong>
-    </article>
-  `).join("") || `<p class="item-sub">Nenhum produto abaixo do mínimo.</p>`;
-
-  $("timeline").innerHTML = state.sales.slice(0, 5).map((sale) => `
-    <article class="timeline-item">
-      <div><p class="item-title">${sale.productName}</p><p class="item-sub">${sale.customer} • ${dateFmt.format(new Date(sale.date))}</p></div>
-      <strong>${money.format(sale.total)}</strong>
-    </article>
-  `).join("") || `<p class="item-sub">As próximas vendas aparecem aqui.</p>`;
-}
-
-function calculatePrice() {
-  const cost = num("calc-cost");
-  const realCost = cost + num("calc-freight") + num("calc-packaging") + num("calc-fixed");
-  const fee = num("calc-fee") / 100;
-  const margin = num("calc-margin") / 100;
-  const discount = num("calc-discount") / 100;
-  const commission = num("calc-commission") / 100;
-  const divisor = Math.max(0.05, 1 - fee - margin - discount - commission);
-  const suggested = realCost / divisor;
-  const breakEven = realCost / Math.max(0.05, 1 - fee - discount - commission);
-  const profit = suggested * (1 - fee - discount - commission) - realCost;
-  const halfProfit = Math.max(0, profit / 2);
-  const promoMin = (realCost + halfProfit) / Math.max(0.05, 1 - fee - commission);
-  const maxHealthyDiscount = suggested > 0 ? Math.max(0, Math.min(0.9, 1 - promoMin / suggested)) : 0;
-  const discountedSalePrice = suggested * (1 - discount);
-  const discountProfit = discountedSalePrice * (1 - fee - commission) - realCost;
-  $("suggested-price").textContent = money.format(suggested);
-  $("daily-price").textContent = money.format(suggested);
-  $("profit-summary").textContent = `Lucro estimado de ${money.format(profit)} por venda`;
-  $("real-cost").textContent = money.format(realCost);
-  $("break-even").textContent = money.format(breakEven);
-  $("profit-per-sale").textContent = money.format(profit);
-  $("promo-min-price").textContent = money.format(promoMin);
-  $("max-healthy-discount").textContent = `${(maxHealthyDiscount * 100).toFixed(1)}%`;
-  $("discount-profit").textContent = money.format(discountProfit);
-  $("real-margin").textContent = `${((profit / suggested) * 100 || 0).toFixed(1)}%`;
-  $("daily-note").textContent = `Mantém a margem de ${((profit / suggested) * 100 || 0).toFixed(1)}%.`;
-  $("promo-note").textContent = `Ainda sobra cerca de ${money.format(halfProfit)} de lucro.`;
-}
-
-function renderReports() {
-  const total = totals();
-  const max = Math.max(total.revenue, total.profit, total.stock * 10, 1);
-  const rows = [
-    ["Faturamento", total.revenue],
-    ["Lucro", total.profit],
-    ["Valor em estoque", state.products.reduce((sum, p) => sum + p.cost * p.stock, 0)]
-  ];
-  $("report-bars").innerHTML = rows.map(([label, value]) => `
-    <article class="bar-row">
-      <span>${label}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, (value / max) * 100)}%"></div></div>
-      <strong>${money.format(value)}</strong>
-    </article>
-  `).join("");
-
-  $("category-report").innerHTML = categories.map((category) => {
-    const items = state.products.filter((product) => product.category === category);
-    const stock = items.reduce((sum, product) => sum + product.stock, 0);
-    return `<article class="bar-row"><span>${category}</span><strong>${stock} itens</strong></article>`;
-  }).join("");
-
-  const recommendations = [];
-  if (total.low) recommendations.push(`Repor ${total.low} produto(s) em alerta antes das próximas campanhas.`);
-  if (!state.sales.length) recommendations.push("Registre vendas para o painel começar a mostrar lucro, ticket médio e giro.");
-  if (total.profit < total.revenue * 0.25 && state.sales.length) recommendations.push("Revise taxas e descontos: a margem líquida está abaixo de 25%.");
-  recommendations.push("Use a calculadora antes de cadastrar novos produtos para manter a margem planejada.");
-  $("recommendations").innerHTML = recommendations.map((text) => `<article class="recommendation">${text}</article>`).join("");
-}
-
-window.editProduct = editProduct;
-window.deleteProduct = deleteProduct;
-document.addEventListener("DOMContentLoaded", init);
+  renderCatalog();
+  renderCart();
+  refreshIcons();
+  window.setTimeout(() => {
+    if (!currentCustomer) openAuthModal();
+  }, 900);
+  await setupCloud();
+  await setupCustomerSession();
+  await loadStoreProducts();
+  renderProducts();
+  renderCatalog();
+  renderCart();
+});
