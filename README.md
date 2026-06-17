@@ -1,104 +1,86 @@
-# Urban Legacy OS
+# Urban Legacy
 
-App para controle de estoque, vendas, clientes, relatórios e precificação de revenda da Urban Legacy.
-
-Ele funciona de dois jeitos:
-
-- **Modo local:** salva os dados no navegador.
-- **Modo nuvem:** salva os dados no Supabase, funcionando no celular mesmo com o computador desligado.
+Vitrine propria da Urban Legacy criada do zero em HTML, CSS e JavaScript, com cadastro de cliente e integracao com Supabase para produtos e pedidos.
 
 ## Como abrir
 
-Na pasta do projeto, rode:
+Localmente, para testar no seu computador:
 
 ```powershell
 node server.mjs
 ```
 
-Depois acesse:
+Acesse:
 
 ```text
 http://localhost:4173
 ```
 
-Os dados ficam salvos no navegador usando `localStorage`. Para repor os dados de exemplo, clique no botão com ícone de brilho no topo.
-
-## Como deixar online grátis
-
-### 1. Criar banco no Supabase
-
-1. Crie uma conta em `https://supabase.com`.
-2. Crie um novo projeto.
-3. Entre em **SQL Editor**.
-4. Copie o conteúdo de `supabase-schema.sql`.
-5. Execute o SQL.
-
-Esse script cria as tabelas:
-
-- `products`
-- `sales`
-- `customers`
-
-E também ativa regras de segurança por usuário.
-
-### 2. Pegar as chaves do Supabase
-
-No Supabase, vá em:
+Painel de gestao:
 
 ```text
-Project Settings > API
+http://localhost:4173/admin.html
 ```
 
-Copie:
+## Rodar na internet
 
-- `Project URL`
-- `anon public key`
+O Supabase fica responsavel por banco, login, produtos e pedidos. O site precisa ser publicado em uma hospedagem estatica como Vercel ou Netlify.
 
-Depois edite o arquivo `supabase-config.js`:
+### Vercel
 
-```js
-window.URBAN_LEGACY_SUPABASE = {
-  url: "COLE_A_PROJECT_URL_AQUI",
-  anonKey: "COLE_A_ANON_PUBLIC_KEY_AQUI"
-};
-```
+1. Crie uma conta em `https://vercel.com`.
+2. Envie esta pasta para um repositorio no GitHub.
+3. Na Vercel, clique em `Add New Project`.
+4. Importe o repositorio.
+5. Nao precisa configurar build command.
+6. Publique.
 
-### 3. Publicar no GitHub Pages
-
-1. Crie um repositório no GitHub.
-2. Envie estes arquivos para o repositório.
-3. Vá em **Settings > Pages**.
-4. Em **Build and deployment**, selecione:
+Depois da publicacao, os links ficam nesse formato:
 
 ```text
-Source: Deploy from a branch
-Branch: main
-Folder: /root
+https://nome-do-projeto.vercel.app
+https://nome-do-projeto.vercel.app/admin.html
 ```
 
-Depois o GitHub vai gerar um link parecido com:
+Com `cleanUrls`, tambem pode funcionar:
 
 ```text
-https://seu-usuario.github.io/urban-legacy-os/
+https://nome-do-projeto.vercel.app/admin
 ```
 
-Esse link abre no celular sem depender do computador ligado.
+## O que tem
 
-### 4. Primeiro acesso
+- Home, categorias, busca sem diferenciar maiusculas/minusculas e sem depender de acento.
+- Pagina de categoria, filtros, ordenacao e detalhe de produto.
+- Carrinho e finalizacao pelo WhatsApp `34 98834-5037`.
+- Mensagem do WhatsApp destacando o produto pedido.
+- Cadastro/login de cliente.
+- Produtos carregados do Supabase quando o banco estiver configurado.
+- Painel admin com aba de produtos para especificacoes completas.
+- Aba de vendas com pedidos, status, metricas e grafico dos ultimos 7 dias.
 
-Abra o app online, crie seu acesso com e-mail e senha, depois entre.
+## Configurar Supabase
 
-Se o Supabase pedir confirmação por e-mail, confirme primeiro e depois faça login no app.
+1. Abra `supabase-schema.sql`.
+2. Rode o SQL no editor SQL do Supabase.
+3. Crie ou entre com o usuario admin.
+4. No Supabase Auth, copie o ID desse usuario.
+5. Rode no SQL editor:
 
-## Módulos
+```sql
+insert into public.store_admins (user_id)
+values ('COLE_AQUI_O_ID_DO_USUARIO_ADMIN');
+```
 
-- Painel com faturamento, lucro, estoque e ticket médio.
-- Cadastro e edição de produtos com SKU, categoria, custo, preço e estoque mínimo.
-- Calculadora de preço sugerido com custo, frete, embalagem, taxas, desconto, comissão e margem.
-- Registro de vendas com baixa automática de estoque.
-- Cadastro de clientes.
-- Relatórios e recomendações operacionais.
+Depois disso, o `admin.html` consegue controlar os produtos e pedidos. Produtos marcados como publicados aparecem automaticamente no site.
 
-## Observação importante
+## Gestao da loja
 
-O arquivo `supabase-config.js` usa a chave pública `anon`, que é normal em apps web. A segurança real fica nas regras do `supabase-schema.sql`, que limitam os dados ao usuário logado.
+No painel `admin.html` existem duas areas:
+
+- `Produtos`: cadastro de nome, categoria, SKU, selo, preco, custo, estoque, tamanhos, material, modelagem, medidas, cuidados, imagens e descricao.
+- `Vendas`: pedidos recebidos, status de atendimento, faturamento, receita confirmada, ticket medio, pendencias, produto destaque e grafico de faturamento dos ultimos 7 dias.
+
+## Produto local de reserva
+
+Se o Supabase estiver fora do ar ou o SQL ainda nao tiver sido rodado, o site continua mostrando os produtos locais de reserva dentro de `app.js`.
