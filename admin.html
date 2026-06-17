@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestao Urban Legacy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="supabase-config.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+    <script src="admin.js" defer></script>
+  </head>
+  <body class="admin-body">
+    <main class="admin-shell">
+      <header class="admin-topbar">
+        <a class="brand" href="index.html" aria-label="Urban Legacy">
+          <img src="https://images.yampi.me/assets/stores/urban-legacy2/uploads/logo/6a0376c018120.png" alt="Urban Legacy" />
+        </a>
+        <div>
+          <p class="eyebrow">Painel da loja</p>
+          <h1>Gestao Urban Legacy</h1>
+        </div>
+        <button class="secondary-button" id="admin-logout" type="button">Sair</button>
+      </header>
+
+      <section class="admin-login" id="admin-login">
+        <div class="admin-card">
+          <p class="eyebrow">Acesso admin</p>
+          <h2>Entrar na gestao</h2>
+          <label>E-mail<input id="admin-email" type="email" autocomplete="email" /></label>
+          <label>Senha<input id="admin-password" type="password" autocomplete="current-password" /></label>
+          <button class="primary-button full" id="admin-login-button" type="button">Entrar</button>
+          <p class="auth-status" id="admin-login-status">Entre com o usuario marcado como admin no Supabase.</p>
+        </div>
+      </section>
+
+      <section class="admin-workspace page-hidden" id="admin-workspace">
+        <nav class="admin-tabs" aria-label="Areas da gestao">
+          <button class="active" data-admin-tab="products" type="button"><i data-lucide="package"></i>Produtos</button>
+          <button data-admin-tab="sales" type="button"><i data-lucide="chart-no-axes-combined"></i>Vendas</button>
+        </nav>
+
+        <section class="admin-tab-panel active" id="admin-tab-products">
+          <form class="admin-card product-form" id="product-form">
+            <div class="admin-card-heading">
+              <div>
+                <p class="eyebrow">Especificacoes</p>
+                <h2 id="form-title">Novo produto</h2>
+              </div>
+              <button class="ghost-button" id="clear-product" type="button">Limpar</button>
+            </div>
+            <input id="product-id" type="hidden" />
+            <label>Nome<input id="product-name" required /></label>
+            <div class="admin-two-columns">
+              <label>Categoria
+                <select id="product-category">
+                  <option>Moda Feminina</option>
+                  <option>Moda Masculina</option>
+                  <option>Acessório Feminino</option>
+                  <option>Acessório Masculino</option>
+                </select>
+              </label>
+              <label>SKU / Codigo<input id="product-sku" placeholder="UL-001" /></label>
+            </div>
+            <div class="admin-two-columns">
+              <label>Selo<input id="product-badge" placeholder="Novo, Destaque..." /></label>
+              <label>Cor<input id="product-color" /></label>
+            </div>
+            <div class="admin-three-columns">
+              <label>Preco venda<input id="product-price" type="number" min="0" step="0.01" required /></label>
+              <label>Preco antigo<input id="product-compare-price" type="number" min="0" step="0.01" /></label>
+              <label>Custo<input id="product-cost" type="number" min="0" step="0.01" /></label>
+            </div>
+            <div class="admin-three-columns">
+              <label>Estoque<input id="product-stock" type="number" min="0" step="1" /></label>
+              <label>Estoque minimo<input id="product-min-stock" type="number" min="0" step="1" /></label>
+              <label>Tamanhos<input id="product-sizes" placeholder="P, M, G, GG" /></label>
+            </div>
+            <div class="admin-two-columns">
+              <label>Material<input id="product-material" placeholder="Algodao, couro, jeans..." /></label>
+              <label>Modelagem<input id="product-fit" placeholder="Oversized, slim, canelado..." /></label>
+            </div>
+            <label>Medidas<textarea id="product-measurements" rows="3" placeholder="P: busto 80cm, cintura 64cm..."></textarea></label>
+            <label>Cuidados<textarea id="product-care" rows="2" placeholder="Lavar a mao, nao usar alvejante..."></textarea></label>
+            <label>Imagem principal<input id="product-image" type="url" placeholder="https://..." /></label>
+            <label>Galeria<input id="product-gallery" placeholder="1 URL por linha ou separado por virgula" /></label>
+            <label>Descricao<textarea id="product-description" rows="4"></textarea></label>
+            <label class="admin-check"><input id="product-published" type="checkbox" checked />Publicado no site</label>
+            <button class="primary-button full" type="submit">Salvar produto</button>
+            <p class="auth-status" id="product-status"></p>
+          </form>
+
+          <section class="admin-card">
+            <div class="admin-card-heading">
+              <div>
+                <p class="eyebrow">Catalogo</p>
+                <h2>Produtos da loja</h2>
+              </div>
+              <button class="secondary-button" id="reload-products" type="button">Atualizar</button>
+            </div>
+            <div class="admin-list" id="admin-products"></div>
+          </section>
+        </section>
+
+        <section class="admin-tab-panel" id="admin-tab-sales">
+          <section class="admin-card sales-dashboard">
+            <div class="admin-card-heading">
+              <div>
+                <p class="eyebrow">Performance</p>
+                <h2>Gestao das vendas</h2>
+              </div>
+              <button class="secondary-button" id="reload-orders" type="button">Atualizar</button>
+            </div>
+            <div class="sales-metrics" id="sales-metrics"></div>
+            <div class="sales-chart-card">
+              <div>
+                <strong>Faturamento dos ultimos 7 dias</strong>
+                <span id="sales-chart-caption">Aguardando pedidos.</span>
+              </div>
+              <div class="sales-chart" id="sales-chart"></div>
+            </div>
+          </section>
+
+          <section class="admin-card orders-card">
+            <div class="admin-card-heading">
+              <div>
+                <p class="eyebrow">Pedidos</p>
+                <h2>Pedidos recebidos</h2>
+              </div>
+            </div>
+            <div class="admin-list" id="admin-orders"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+  </body>
+</html>
