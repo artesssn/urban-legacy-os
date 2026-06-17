@@ -73,7 +73,9 @@ async function loginAdmin() {
     return;
   }
   if (!(await isAdmin())) {
-    setStatus("admin-login-status", "Usuario sem permissao de admin.", true);
+    const { data } = await adminDb.auth.getUser();
+    const uid = data.user?.id ? ` UID: ${data.user.id}` : "";
+    setStatus("admin-login-status", `Usuario logado, mas nao esta na tabela store_admins.${uid}`, true);
     return;
   }
   setStatus("admin-login-status", "Acesso liberado.");
