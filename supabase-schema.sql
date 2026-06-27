@@ -16,6 +16,7 @@ create table if not exists public.products (
   size text,
   sizes text[] not null default '{}',
   color text,
+  colors text[] not null default '{}',
   supplier text,
   description text,
   material text,
@@ -120,6 +121,7 @@ alter table public.products add column if not exists owner_id uuid references au
 alter table public.products add column if not exists sku text;
 alter table public.products add column if not exists size text;
 alter table public.products add column if not exists sizes text[] not null default '{}';
+alter table public.products add column if not exists colors text[] not null default '{}';
 alter table public.products add column if not exists supplier text;
 alter table public.products add column if not exists description text;
 alter table public.products add column if not exists material text;
