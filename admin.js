@@ -22,6 +22,11 @@ let cloudEnabled = false;
 let currentUser = null;
 let authLocked = false;
 
+function shouldForceLogin() {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("login") || params.has("reset") || window.location.hash === "#login";
+}
+
 function loadState() {
   const saved = localStorage.getItem("urbanLegacyOS");
   if (saved) {
@@ -59,6 +64,14 @@ function setupCloud() {
 
 async function setupAuth() {
   if (!cloudEnabled) return true;
+
+  if (shouldForceLogin()) {
+    await db.auth.signOut();
+    currentUser = null;
+    $("auth-screen").hidden = false;
+    setAuthMessage("Digite seu e-mail e clique em Recuperar senha ou entre novamente.");
+    return false;
+  }
 
   const { data } = await db.auth.getSession();
   currentUser = data.session?.user || null;
