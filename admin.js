@@ -21,6 +21,7 @@ let db = null;
 let cloudEnabled = false;
 let currentUser = null;
 let authLocked = false;
+let productGalleryDraft = [];
 
 function shouldForceLogin() {
   const params = new URLSearchParams(window.location.search);
@@ -370,6 +371,45 @@ function joinList(value) {
   return String(value || "");
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderProductImagePreview() {
+  const preview = $("product-image-preview");
+  if (!preview) return;
+  preview.innerHTML = productGalleryDraft.length
+    ? productGalleryDraft.map((image, index) => `
+        <article class="image-preview-item">
+          <img src="${image}" alt="Foto ${index + 1} do produto" />
+          <button type="button" data-remove-product-image="${index}" aria-label="Remover foto">Remover</button>
+          ${index === 0 ? "<span>Principal</span>" : ""}
+        </article>
+      `).join("")
+    : `<p class="item-sub">Nenhuma foto selecionada.</p>`;
+
+  preview.querySelectorAll("[data-remove-product-image]").forEach((button) => {
+    button.addEventListener("click", () => {
+      productGalleryDraft.splice(Number(button.dataset.removeProductImage), 1);
+      renderProductImagePreview();
+    });
+  });
+}
+
+async function handleProductImages(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  const images = await Promise.all(files.map(fileToDataUrl));
+  productGalleryDraft.push(...images);
+  event.target.value = "";
+  renderProductImagePreview();
+}
+
 function toast(message) {
   const el = $("toast");
   el.textContent = message;
@@ -461,6 +501,7 @@ function showView(view) {
 
 function bindForms() {
   $("product-form").addEventListener("submit", saveProduct);
+  $("product-images").addEventListener("change", handleProductImages);
   $("sale-form").addEventListener("submit", (event) => saveSale(event, "sale"));
   $("quick-sale-form").addEventListener("submit", (event) => saveSale(event, "quick"));
   $("customer-form").addEventListener("submit", saveCustomer);
@@ -475,6 +516,7 @@ function bindForms() {
 
 function render() {
   renderSelectors();
+  renderProductImagePreview();
   renderMetrics();
   renderProducts();
   renderSales();
@@ -544,7 +586,7 @@ async function saveProduct(event) {
   event.preventDefault();
   const sizes = splitList($("product-size").value);
   const colors = splitList($("product-color").value);
-  const gallery = splitList($("product-gallery").value);
+  const gallery = [...productGalleryDraft];
   const product = {
     id: $("product-id").value || crypto.randomUUID(),
     name: $("product-name").value.trim(),
@@ -576,6 +618,8 @@ async function saveProduct(event) {
   event.target.reset();
   $("product-id").value = "";
   $("product-min").value = 3;
+  productGalleryDraft = [];
+  renderProductImagePreview();
   render();
   toast("Produto salvo");
 }
@@ -594,7 +638,9 @@ function editProduct(id) {
   $("product-stock").value = product.stock;
   $("product-min").value = product.min;
   $("product-price").value = product.price;
-  $("product-gallery").value = (product.gallery || []).join("\n");
+  productGalleryDraft = [...(product.gallery || [])];
+  $("product-images").value = "";
+  renderProductImagePreview();
   showView("products");
 }
 
