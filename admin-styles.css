@@ -58,6 +58,28 @@ body {
   object-fit: contain;
 }
 
+.auth-panel.loading {
+  opacity: 0.78;
+}
+
+.auth-panel.loading button,
+.auth-panel.loading input {
+  cursor: wait;
+}
+
+.auth-message {
+  min-height: 20px;
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.auth-message.error {
+  color: var(--red);
+}
+
 button,
 input,
 select,
