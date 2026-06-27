@@ -1,5 +1,11 @@
 create extension if not exists pgcrypto;
 
+create table if not exists public.store_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'owner',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
@@ -129,6 +135,7 @@ alter table public.products add column if not exists sort_order integer not null
 alter table public.products add column if not exists updated_at timestamptz not null default now();
 
 alter table public.products enable row level security;
+alter table public.store_admins enable row level security;
 alter table public.sales enable row level security;
 alter table public.customers enable row level security;
 alter table public.customer_references enable row level security;
@@ -137,6 +144,7 @@ alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
 drop policy if exists "Public products access" on public.products;
+drop policy if exists "Admins read own admin access" on public.store_admins;
 drop policy if exists "Public read published products" on public.products;
 drop policy if exists "User products access" on public.products;
 drop policy if exists "User sales access" on public.sales;
@@ -154,6 +162,11 @@ create policy "Public read published products"
 on public.products
 for select
 using (published = true);
+
+create policy "Admins read own admin access"
+on public.store_admins
+for select
+using (user_id = auth.uid());
 
 create policy "User products access"
 on public.products
@@ -216,6 +229,11 @@ with check (
       and orders.customer_user_id = auth.uid()
   )
 );
+
+-- Para separar cliente e admin, adicione somente seu usuario de gestao:
+-- insert into public.store_admins (user_id, role)
+-- select id, 'owner' from auth.users where email = 'joaogabrielbr31@gmail.com'
+-- on conflict (user_id) do update set role = 'owner';
 
 create policy "Customers read own order items"
 on public.order_items
