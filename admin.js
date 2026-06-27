@@ -633,7 +633,13 @@ async function saveProduct(event) {
 
   if (cloudEnabled) {
     const { error } = await db.from("products").upsert(toProductRow(product));
-    if (error) return toast("Erro ao salvar no Supabase");
+    if (error) {
+      console.warn(error);
+      saveState();
+      render();
+      toast(`Produto salvo localmente. Supabase: ${error.message}`);
+      return;
+    }
   } else {
     saveState();
   }
