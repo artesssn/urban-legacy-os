@@ -222,10 +222,12 @@ async function seedCloud() {
 function fromProductRow(row) {
   const sizes = Array.isArray(row.sizes) && row.sizes.length ? row.sizes : splitList(row.size);
   const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : splitList(row.color);
+  const productCategories = Array.isArray(row.categories) && row.categories.length ? row.categories : [row.category].filter(Boolean);
   return {
     id: row.id,
     name: row.name,
-    category: row.category,
+    category: productCategories[0] || row.category,
+    categories: productCategories,
     sku: row.sku,
     size: sizes.join(", "),
     sizes,
@@ -247,6 +249,7 @@ function toProductRow(product) {
     user_id: currentUser?.id,
     name: product.name,
     category: product.category,
+    categories: product.categories || [product.category],
     sku: product.sku,
     size: product.size,
     sizes: product.sizes || splitList(product.size),
@@ -356,7 +359,7 @@ function $(id) {
 }
 
 function num(id) {
-  return Number($(id).value || 0);
+  return Number(String($(id).value || "0").replace(/\./g, "").replace(",", "."));
 }
 
 function splitList(value) {
@@ -369,6 +372,17 @@ function splitList(value) {
 function joinList(value) {
   if (Array.isArray(value)) return value.join(", ");
   return String(value || "");
+}
+
+function selectedProductCategories() {
+  return Array.from(document.querySelectorAll("[data-product-category]:checked")).map((input) => input.value);
+}
+
+function setProductCategories(values) {
+  const selected = Array.isArray(values) && values.length ? values : ["Moda Feminina"];
+  document.querySelectorAll("[data-product-category]").forEach((input) => {
+    input.checked = selected.includes(input.value);
+  });
 }
 
 function fileToDataUrl(file) {
@@ -467,10 +481,13 @@ async function init() {
 }
 
 function populateCategories() {
-  const selects = [$("product-category")];
-  selects.forEach((select) => {
-    select.innerHTML = categories.map((cat) => `<option>${cat}</option>`).join("");
-  });
+  $("product-category").innerHTML = categories.map((cat) => `
+    <label class="choice-option">
+      <input data-product-category type="checkbox" value="${cat}" />
+      <span>${cat}</span>
+    </label>
+  `).join("");
+  setProductCategories(["Moda Feminina"]);
 }
 
 function bindNavigation() {
@@ -561,14 +578,14 @@ function renderMetrics() {
 function renderProducts() {
   const search = $("global-search").value.trim().toLowerCase();
   const filtered = state.products.filter((product) => {
-    const haystack = `${product.name} ${product.sku} ${product.category} ${product.color} ${product.supplier}`.toLowerCase();
+    const haystack = `${product.name} ${product.sku} ${joinList(product.categories || product.category)} ${product.color} ${product.supplier}`.toLowerCase();
     return haystack.includes(search);
   });
   $("product-count").textContent = `${filtered.length} produtos`;
   $("products-table").innerHTML = filtered.map((product) => `
     <tr>
       <td><b>${product.name}</b><p class="item-sub">${product.color || "Sem cor"} • ${product.size || "Sem tamanho"} • ${(product.gallery || []).length} foto(s)</p></td>
-      <td>${product.category}</td>
+      <td>${joinList(product.categories || product.category)}</td>
       <td>${product.sku}</td>
       <td class="${product.stock <= product.min ? "status-low" : "status-ok"}">${product.stock}</td>
       <td>${money.format(product.price)}</td>
@@ -586,11 +603,17 @@ async function saveProduct(event) {
   event.preventDefault();
   const sizes = splitList($("product-size").value);
   const colors = splitList($("product-color").value);
+  const productCategories = selectedProductCategories();
+  if (!productCategories.length) {
+    toast("Selecione pelo menos uma categoria");
+    return;
+  }
   const gallery = [...productGalleryDraft];
   const product = {
     id: $("product-id").value || crypto.randomUUID(),
     name: $("product-name").value.trim(),
-    category: $("product-category").value,
+    category: productCategories[0],
+    categories: productCategories,
     sku: $("product-sku").value.trim(),
     size: sizes.join(", "),
     sizes,
@@ -618,6 +641,7 @@ async function saveProduct(event) {
   event.target.reset();
   $("product-id").value = "";
   $("product-min").value = 3;
+  setProductCategories(["Moda Feminina"]);
   productGalleryDraft = [];
   renderProductImagePreview();
   render();
@@ -629,7 +653,7 @@ function editProduct(id) {
   if (!product) return;
   $("product-id").value = product.id;
   $("product-name").value = product.name;
-  $("product-category").value = product.category;
+  setProductCategories(product.categories || [product.category]);
   $("product-sku").value = product.sku;
   $("product-size").value = joinList(product.sizes || product.size);
   $("product-color").value = joinList(product.colors || product.color);
@@ -857,7 +881,7 @@ function renderReports() {
   `).join("");
 
   $("category-report").innerHTML = categories.map((category) => {
-    const items = state.products.filter((product) => product.category === category);
+    const items = state.products.filter((product) => (product.categories || [product.category]).includes(category));
     const stock = items.reduce((sum, product) => sum + product.stock, 0);
     return `<article class="bar-row"><span>${category}</span><strong>${stock} itens</strong></article>`;
   }).join("");
