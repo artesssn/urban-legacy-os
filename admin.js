@@ -125,6 +125,32 @@ function bindAuth() {
     }
   });
 
+  $("auth-reset").addEventListener("click", async () => {
+    if (authLocked) return;
+    const email = $("auth-email").value.trim();
+    if (!email) {
+      setAuthMessage("Digite seu e-mail para recuperar a senha.", true);
+      return;
+    }
+    setAuthMessage("Enviando recuperação de senha...");
+    setAuthLoading(true);
+    try {
+      const { error } = await withTimeout(db.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://artesssn.github.io/urban-legacy-os/admin.html"
+      }), "Recuperação");
+      if (error) {
+        setAuthMessage("Não consegui enviar recuperação. Confira o e-mail no Supabase.", true);
+        return;
+      }
+      setAuthMessage("Se esse e-mail existir, o Supabase enviou um link para redefinir a senha.");
+    } catch (error) {
+      console.warn(error);
+      setAuthMessage("Falha ao pedir recuperação. Use o painel do Supabase para trocar a senha.", true);
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
   $("local-mode").addEventListener("click", () => enterLocalMode("Modo local aberto"));
 
   $("logout-button").addEventListener("click", async () => {
