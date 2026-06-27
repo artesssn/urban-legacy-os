@@ -419,23 +419,6 @@ function bindNavigation() {
     button.addEventListener("click", () => showView(button.dataset.jump));
   });
   $("global-search").addEventListener("input", renderProducts);
-  $("seed-demo").addEventListener("click", async () => {
-    state = structuredClone(starterData);
-    if (cloudEnabled) {
-      await Promise.all([
-        db.from("sales").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("customers").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-        db.from("customer_references").delete().neq("id", "00000000-0000-0000-0000-000000000000")
-      ]);
-      await seedCloud();
-      await loadCloudState();
-    } else {
-      saveState();
-    }
-    render();
-    toast("Dados de exemplo repostos");
-  });
 }
 
 function showView(view) {
