@@ -12,6 +12,7 @@ create table if not exists public.products (
   owner_id uuid references auth.users(id) on delete set null,
   name text not null,
   category text not null,
+  categories text[] not null default '{}',
   sku text,
   size text,
   sizes text[] not null default '{}',
@@ -119,6 +120,7 @@ create table if not exists public.order_items (
 alter table public.products add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table public.products add column if not exists owner_id uuid references auth.users(id) on delete set null;
 alter table public.products add column if not exists sku text;
+alter table public.products add column if not exists categories text[] not null default '{}';
 alter table public.products add column if not exists size text;
 alter table public.products add column if not exists sizes text[] not null default '{}';
 alter table public.products add column if not exists colors text[] not null default '{}';
