@@ -132,15 +132,18 @@
               <form id="product-form" class="form-grid">
                 <input type="hidden" id="product-id" />
                 <label>Nome<input id="product-name" required placeholder="Camiseta oversized preta" /></label>
-                <label>Categoria<select id="product-category"></select></label>
+                <fieldset class="full choice-field">
+                  <legend>Categorias</legend>
+                  <div class="choice-grid" id="product-category"></div>
+                </fieldset>
                 <label>SKU<input id="product-sku" required placeholder="UL-MASC-001" /></label>
                 <label>Tamanhos<input id="product-size" placeholder="P, M, G, GG ou único" /></label>
                 <label>Cores<input id="product-color" placeholder="Preto, Branco, Azul" /></label>
                 <label>Fornecedor<input id="product-supplier" placeholder="Fornecedor" /></label>
-                <label>Custo do produto<input id="product-cost" type="number" min="0" step="0.01" required /></label>
+                <label>Custo do produto<input id="product-cost" inputmode="decimal" required placeholder="23,99" /></label>
                 <label>Estoque<input id="product-stock" type="number" min="0" step="1" required /></label>
                 <label>Estoque mínimo<input id="product-min" type="number" min="0" step="1" value="3" /></label>
-                <label>Preço de venda<input id="product-price" type="number" min="0" step="0.01" required /></label>
+                <label>Preço de venda<input id="product-price" inputmode="decimal" required placeholder="36,86" /></label>
                 <label class="full">Fotos do produto<input id="product-images" type="file" accept="image/*" multiple /></label>
                 <div class="image-preview full" id="product-image-preview"></div>
                 <p class="item-sub full">Você pode selecionar várias imagens. A primeira foto será a principal.</p>
