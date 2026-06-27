@@ -373,6 +373,43 @@ label {
   font-weight: 700;
 }
 
+.choice-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-field legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.choice-option {
+  min-height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #111014;
+}
+
+.choice-option input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--gold-2);
+}
+
 .full {
   grid-column: 1 / -1;
 }
