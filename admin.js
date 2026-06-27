@@ -75,8 +75,34 @@ async function setupAuth() {
 
   const { data } = await db.auth.getSession();
   currentUser = data.session?.user || null;
-  $("auth-screen").hidden = Boolean(currentUser);
-  return Boolean(currentUser);
+  if (!currentUser) {
+    $("auth-screen").hidden = false;
+    return false;
+  }
+  if (!(await isAdminUser())) {
+    await db.auth.signOut();
+    currentUser = null;
+    $("auth-screen").hidden = false;
+    setAuthMessage("Essa conta entra na loja, mas não tem acesso ao admin.", true);
+    return false;
+  }
+  $("auth-screen").hidden = true;
+  return true;
+}
+
+async function isAdminUser() {
+  if (!cloudEnabled || !currentUser) return false;
+  const { data, error } = await db
+    .from("store_admins")
+    .select("user_id")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (error) {
+    console.warn(error);
+    setAuthMessage("Tabela store_admins não existe. Rode o schema no Supabase.", true);
+    return false;
+  }
+  return Boolean(data);
 }
 
 function bindAuth() {
@@ -94,6 +120,12 @@ function bindAuth() {
         return;
       }
       currentUser = data.user;
+      if (!(await isAdminUser())) {
+        await db.auth.signOut();
+        currentUser = null;
+        setAuthMessage("Essa conta é de cliente/loja e não tem acesso ao admin.", true);
+        return;
+      }
       $("auth-screen").hidden = true;
       await loadCloudState();
       render();
@@ -106,36 +138,8 @@ function bindAuth() {
     }
   });
 
-  $("auth-signup").addEventListener("click", async () => {
-    if (authLocked) return;
-    const email = $("auth-email").value.trim();
-    const password = $("auth-password").value;
-    if (!email || password.length < 6) {
-      setAuthMessage("Informe e-mail e senha com 6+ caracteres.", true);
-      return;
-    }
-    setAuthMessage("Criando acesso...");
-    setAuthLoading(true);
-    try {
-      const { data, error } = await withTimeout(db.auth.signUp({ email, password }), "Cadastro");
-      if (error) {
-        setAuthMessage("Não foi possível criar acesso. Talvez esse e-mail já exista.", true);
-        return;
-      }
-      currentUser = data.session?.user || null;
-      $("auth-screen").hidden = Boolean(currentUser);
-      toast(currentUser ? "Acesso criado" : "Confira seu e-mail e depois entre");
-      if (currentUser) {
-        await seedCloud();
-        await loadCloudState();
-        render();
-      }
-    } catch (error) {
-      console.warn(error);
-      setAuthMessage("Falha de conexão. Entre sem nuvem por enquanto.", true);
-    } finally {
-      setAuthLoading(false);
-    }
+  $("auth-signup").addEventListener("click", () => {
+    setAuthMessage("Cadastro pelo admin bloqueado. Crie o usuário no Supabase e adicione em store_admins.", true);
   });
 
   $("auth-reset").addEventListener("click", async () => {
