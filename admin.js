@@ -20,6 +20,7 @@ let state = loadState();
 let db = null;
 let cloudEnabled = false;
 let currentUser = null;
+let authLocked = false;
 
 function loadState() {
   const saved = localStorage.getItem("urbanLegacyOS");
@@ -68,35 +69,66 @@ async function setupAuth() {
 function bindAuth() {
   $("auth-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (authLocked) return;
     const email = $("auth-email").value.trim();
     const password = $("auth-password").value;
-    const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error) return toast("E-mail ou senha inválidos");
-    currentUser = data.user;
-    $("auth-screen").hidden = true;
-    await loadCloudState();
-    render();
-    toast("Conectado à nuvem");
-  });
-
-  $("auth-signup").addEventListener("click", async () => {
-    const email = $("auth-email").value.trim();
-    const password = $("auth-password").value;
-    if (!email || password.length < 6) return toast("Informe e-mail e senha com 6+ caracteres");
-    const { data, error } = await db.auth.signUp({ email, password });
-    if (error) return toast("Não foi possível criar acesso");
-    currentUser = data.session?.user || null;
-    $("auth-screen").hidden = Boolean(currentUser);
-    toast(currentUser ? "Acesso criado" : "Confira seu e-mail e depois entre");
-    if (currentUser) {
-      await seedCloud();
+    setAuthMessage("Entrando...");
+    setAuthLoading(true);
+    try {
+      const { data, error } = await withTimeout(db.auth.signInWithPassword({ email, password }), "Login");
+      if (error) {
+        setAuthMessage("E-mail ou senha inválidos. Confira e tente de novo.", true);
+        return;
+      }
+      currentUser = data.user;
+      $("auth-screen").hidden = true;
       await loadCloudState();
       render();
+      toast("Conectado à nuvem");
+    } catch (error) {
+      console.warn(error);
+      setAuthMessage("Não consegui conectar no Supabase. Entre sem nuvem por enquanto.", true);
+    } finally {
+      setAuthLoading(false);
     }
   });
 
+  $("auth-signup").addEventListener("click", async () => {
+    if (authLocked) return;
+    const email = $("auth-email").value.trim();
+    const password = $("auth-password").value;
+    if (!email || password.length < 6) {
+      setAuthMessage("Informe e-mail e senha com 6+ caracteres.", true);
+      return;
+    }
+    setAuthMessage("Criando acesso...");
+    setAuthLoading(true);
+    try {
+      const { data, error } = await withTimeout(db.auth.signUp({ email, password }), "Cadastro");
+      if (error) {
+        setAuthMessage("Não foi possível criar acesso. Talvez esse e-mail já exista.", true);
+        return;
+      }
+      currentUser = data.session?.user || null;
+      $("auth-screen").hidden = Boolean(currentUser);
+      toast(currentUser ? "Acesso criado" : "Confira seu e-mail e depois entre");
+      if (currentUser) {
+        await seedCloud();
+        await loadCloudState();
+        render();
+      }
+    } catch (error) {
+      console.warn(error);
+      setAuthMessage("Falha de conexão. Entre sem nuvem por enquanto.", true);
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
+  $("local-mode").addEventListener("click", () => enterLocalMode("Modo local aberto"));
+
   $("logout-button").addEventListener("click", async () => {
-    await db.auth.signOut();
+    if (db) await db.auth.signOut();
     currentUser = null;
     $("auth-screen").hidden = false;
     toast("Você saiu da nuvem");
@@ -114,10 +146,8 @@ async function loadCloudState() {
 
   const error = productsResult.error || salesResult.error || customersResult.error;
   if (error) {
-    cloudEnabled = false;
-    db = null;
-    $("storage-mode").textContent = "modo local";
-    toast("Supabase sem conexão. Usando modo local.");
+    console.warn(error);
+    enterLocalMode("Supabase sem schema completo. Modo local ativado.");
     return;
   }
 
@@ -277,6 +307,42 @@ function toast(message) {
   el.textContent = message;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 2100);
+}
+
+function setAuthMessage(message, isError = false) {
+  const el = $("auth-message");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle("error", isError);
+}
+
+function setAuthLoading(loading) {
+  authLocked = loading;
+  $("auth-form")?.classList.toggle("loading", loading);
+  document.querySelectorAll("#auth-form button, #auth-form input").forEach((el) => {
+    el.disabled = loading;
+  });
+}
+
+function enterLocalMode(message = "Modo local aberto") {
+  cloudEnabled = false;
+  db = null;
+  currentUser = null;
+  $("storage-mode").textContent = "modo local";
+  $("logout-button").hidden = true;
+  $("auth-screen").hidden = true;
+  saveState();
+  render();
+  toast(message);
+}
+
+function withTimeout(promise, label = "Operação", ms = 12000) {
+  return Promise.race([
+    promise,
+    new Promise((_resolve, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} demorou demais`)), ms);
+    })
+  ]);
 }
 
 async function init() {
