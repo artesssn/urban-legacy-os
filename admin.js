@@ -148,17 +148,20 @@ function bindAuth() {
     setAuthMessage("Enviando recuperação de senha...");
     setAuthLoading(true);
     try {
-      const { error } = await withTimeout(db.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://artesssn.github.io/urban-legacy-os/admin.html"
-      }), "Recuperação");
-      if (error) {
-        setAuthMessage("Não consegui enviar recuperação. Confira o e-mail no Supabase.", true);
+      let result = await withTimeout(db.auth.resetPasswordForEmail(email), "Recuperação");
+      if (result.error) {
+        result = await withTimeout(db.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}?login=1`
+        }), "Recuperação com retorno");
+      }
+      if (result.error) {
+        setAuthMessage(`Supabase recusou: ${result.error.message}`, true);
         return;
       }
       setAuthMessage("Se esse e-mail existir, o Supabase enviou um link para redefinir a senha.");
     } catch (error) {
       console.warn(error);
-      setAuthMessage("Falha ao pedir recuperação. Use o painel do Supabase para trocar a senha.", true);
+      setAuthMessage(`Falha ao pedir recuperação: ${error.message || "erro desconhecido"}`, true);
     } finally {
       setAuthLoading(false);
     }
