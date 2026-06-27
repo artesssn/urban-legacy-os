@@ -219,18 +219,24 @@ async function seedCloud() {
 }
 
 function fromProductRow(row) {
+  const sizes = Array.isArray(row.sizes) && row.sizes.length ? row.sizes : splitList(row.size);
+  const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : splitList(row.color);
   return {
     id: row.id,
     name: row.name,
     category: row.category,
     sku: row.sku,
-    size: row.size || "",
-    color: row.color || "",
+    size: sizes.join(", "),
+    sizes,
+    color: colors.join(", "),
+    colors,
     supplier: row.supplier || "",
     cost: Number(row.cost || 0),
     stock: Number(row.stock || 0),
     min: Number(row.min_stock || 0),
-    price: Number(row.price || 0)
+    price: Number(row.price || 0),
+    image: row.image_url || "",
+    gallery: Array.isArray(row.gallery_urls) ? row.gallery_urls : []
   };
 }
 
@@ -242,12 +248,16 @@ function toProductRow(product) {
     category: product.category,
     sku: product.sku,
     size: product.size,
+    sizes: product.sizes || splitList(product.size),
     color: product.color,
+    colors: product.colors || splitList(product.color),
     supplier: product.supplier,
     cost: product.cost,
     stock: product.stock,
     min_stock: product.min,
-    price: product.price
+    price: product.price,
+    image_url: product.image || product.gallery?.[0] || "",
+    gallery_urls: product.gallery || []
   };
 }
 
@@ -346,6 +356,18 @@ function $(id) {
 
 function num(id) {
   return Number($(id).value || 0);
+}
+
+function splitList(value) {
+  return String(value || "")
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function joinList(value) {
+  if (Array.isArray(value)) return value.join(", ");
+  return String(value || "");
 }
 
 function toast(message) {
@@ -503,7 +525,7 @@ function renderProducts() {
   $("product-count").textContent = `${filtered.length} produtos`;
   $("products-table").innerHTML = filtered.map((product) => `
     <tr>
-      <td><b>${product.name}</b><p class="item-sub">${product.color || "Sem cor"} • ${product.size || "Sem tamanho"}</p></td>
+      <td><b>${product.name}</b><p class="item-sub">${product.color || "Sem cor"} • ${product.size || "Sem tamanho"} • ${(product.gallery || []).length} foto(s)</p></td>
       <td>${product.category}</td>
       <td>${product.sku}</td>
       <td class="${product.stock <= product.min ? "status-low" : "status-ok"}">${product.stock}</td>
@@ -520,18 +542,25 @@ function renderProducts() {
 
 async function saveProduct(event) {
   event.preventDefault();
+  const sizes = splitList($("product-size").value);
+  const colors = splitList($("product-color").value);
+  const gallery = splitList($("product-gallery").value);
   const product = {
     id: $("product-id").value || crypto.randomUUID(),
     name: $("product-name").value.trim(),
     category: $("product-category").value,
     sku: $("product-sku").value.trim(),
-    size: $("product-size").value.trim(),
-    color: $("product-color").value.trim(),
+    size: sizes.join(", "),
+    sizes,
+    color: colors.join(", "),
+    colors,
     supplier: $("product-supplier").value.trim(),
     cost: num("product-cost"),
     stock: num("product-stock"),
     min: num("product-min"),
-    price: num("product-price")
+    price: num("product-price"),
+    image: gallery[0] || "",
+    gallery
   };
   const index = state.products.findIndex((item) => item.id === product.id);
   if (index >= 0) state.products[index] = product;
@@ -558,13 +587,14 @@ function editProduct(id) {
   $("product-name").value = product.name;
   $("product-category").value = product.category;
   $("product-sku").value = product.sku;
-  $("product-size").value = product.size;
-  $("product-color").value = product.color;
+  $("product-size").value = joinList(product.sizes || product.size);
+  $("product-color").value = joinList(product.colors || product.color);
   $("product-supplier").value = product.supplier;
   $("product-cost").value = product.cost;
   $("product-stock").value = product.stock;
   $("product-min").value = product.min;
   $("product-price").value = product.price;
+  $("product-gallery").value = (product.gallery || []).join("\n");
   showView("products");
 }
 
