@@ -118,6 +118,7 @@ function productFromRow(row) {
     id: row.id,
     name: row.name,
     category: row.category,
+    categories: Array.isArray(row.categories) && row.categories.length ? row.categories : [row.category],
     color: colors[0] || "Urban",
     colors,
     sizes: Array.isArray(row.sizes) && row.sizes.length ? row.sizes : ["Único"],
@@ -134,7 +135,7 @@ async function loadStoreProducts() {
   if (!cloudEnabled) return;
   const { data, error } = await db
     .from("products")
-    .select("id,name,category,color,colors,sizes,price,badge,image_url,gallery_urls,stock,description,published,sort_order,created_at")
+    .select("id,name,category,categories,color,colors,sizes,price,badge,image_url,gallery_urls,stock,description,published,sort_order,created_at")
     .eq("published", true)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -206,8 +207,9 @@ function filteredProducts() {
 function getFilteredProducts({ category, query = "", sort = "featured", maxPrice = Infinity, brandEnabled = true }) {
   const normalizedQuery = normalizeSearchText(query);
   const list = products.filter((product) => {
-    const inCategory = category === "Todos" || product.category === category;
-    const haystack = normalizeSearchText(`${product.name} ${product.category} ${product.color}`);
+    const productCategories = product.categories || [product.category];
+    const inCategory = category === "Todos" || productCategories.includes(category);
+    const haystack = normalizeSearchText(`${product.name} ${productCategories.join(" ")} ${product.color}`);
     const inSearch = haystack.includes(normalizedQuery);
     const inBrand = brandEnabled;
     const inPrice = product.price <= maxPrice;
