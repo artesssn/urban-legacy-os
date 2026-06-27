@@ -23,6 +23,8 @@
         <label>Senha<input id="auth-password" type="password" required minlength="6" autocomplete="current-password" /></label>
         <button class="primary-button full" type="submit"><i data-lucide="log-in"></i>Entrar</button>
         <button class="ghost-button full" id="auth-signup" type="button"><i data-lucide="user-plus"></i>Criar acesso</button>
+        <button class="ghost-button full" id="local-mode" type="button"><i data-lucide="monitor"></i>Entrar sem nuvem</button>
+        <p class="auth-message" id="auth-message" role="status"></p>
         <p class="item-sub">Use o e-mail e senha cadastrados no Supabase para acessar seus dados na nuvem.</p>
       </form>
     </div>
@@ -35,13 +37,13 @@
         </a>
 
         <nav class="nav" aria-label="Navegação principal">
-          <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Painel</span></button>
-          <button class="nav-item" data-view="products"><i data-lucide="package"></i><span>Estoque</span></button>
-          <button class="nav-item" data-view="pricing"><i data-lucide="calculator"></i><span>Precificação</span></button>
-          <button class="nav-item" data-view="sales"><i data-lucide="shopping-bag"></i><span>Vendas</span></button>
-          <button class="nav-item" data-view="customers"><i data-lucide="users"></i><span>Clientes</span></button>
-          <button class="nav-item" data-view="references"><i data-lucide="bookmark-plus"></i><span>Referências</span></button>
-          <button class="nav-item" data-view="reports"><i data-lucide="bar-chart-3"></i><span>Relatórios</span></button>
+          <button class="nav-item active" data-view="dashboard" type="button"><i data-lucide="layout-dashboard"></i><span>Painel</span></button>
+          <button class="nav-item" data-view="products" type="button"><i data-lucide="package"></i><span>Estoque</span></button>
+          <button class="nav-item" data-view="pricing" type="button"><i data-lucide="calculator"></i><span>Precificação</span></button>
+          <button class="nav-item" data-view="sales" type="button"><i data-lucide="shopping-bag"></i><span>Vendas</span></button>
+          <button class="nav-item" data-view="customers" type="button"><i data-lucide="users"></i><span>Clientes</span></button>
+          <button class="nav-item" data-view="references" type="button"><i data-lucide="bookmark-plus"></i><span>Referências</span></button>
+          <button class="nav-item" data-view="reports" type="button"><i data-lucide="bar-chart-3"></i><span>Relatórios</span></button>
         </nav>
 
         <div class="sidebar-card">
