@@ -113,11 +113,13 @@ async function setupCloud() {
 function productFromRow(row) {
   const image = row.image_url || bannerImage;
   const gallery = Array.isArray(row.gallery_urls) && row.gallery_urls.length ? row.gallery_urls : [image];
+  const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : [row.color || "Urban"];
   return {
     id: row.id,
     name: row.name,
     category: row.category,
-    color: row.color || "Urban",
+    color: colors[0] || "Urban",
+    colors,
     sizes: Array.isArray(row.sizes) && row.sizes.length ? row.sizes : ["Único"],
     price: Number(row.price || 0),
     badge: row.badge || "Urban",
@@ -132,7 +134,7 @@ async function loadStoreProducts() {
   if (!cloudEnabled) return;
   const { data, error } = await db
     .from("products")
-    .select("id,name,category,color,sizes,price,badge,image_url,gallery_urls,stock,description,published,sort_order,created_at")
+    .select("id,name,category,color,colors,sizes,price,badge,image_url,gallery_urls,stock,description,published,sort_order,created_at")
     .eq("published", true)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -348,7 +350,7 @@ function renderProductDetail(product) {
   $("detail-thumbs").innerHTML = images
     .map((image, index) => `<button class="detail-thumb ${index === 0 ? "active" : ""}" style="--thumb-image:url('${image}')" data-detail-image="${image}" aria-label="Ver imagem ${index + 1}"></button>`)
     .join("");
-  $("detail-color-options").innerHTML = [product.color, "Off white", "Preto"].filter((value, index, array) => array.indexOf(value) === index)
+  $("detail-color-options").innerHTML = (product.colors || [product.color]).filter((value, index, array) => value && array.indexOf(value) === index)
     .map((color, index) => `<button class="option-button ${index === 0 ? "active" : ""}" type="button">${color}</button>`)
     .join("");
   $("detail-size-options").innerHTML = product.sizes
